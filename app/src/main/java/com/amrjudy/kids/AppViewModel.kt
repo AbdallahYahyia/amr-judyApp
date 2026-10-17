@@ -18,6 +18,8 @@ enum class Profile(val nameAr: String, val age: Int, val emoji: String) {
     JUDY("جودي", 6, "👧")
 }
 
+class VideoItem(val title: String, val url: String)
+
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = app.getSharedPreferences("amrjudy", Context.MODE_PRIVATE)
 
@@ -111,6 +113,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setPhoto(uri: String?) {
         photoUri = uri
         prefs.edit().putString("photo", uri).apply()
+    }
+
+    // ---- Parent-curated videos (links or videos from the phone) ----
+    var videoVersion by mutableIntStateOf(0)
+        private set
+
+    fun videos(): List<VideoItem> =
+        (prefs.getString("videos", "") ?: "").split("\n")
+            .filter { it.contains("\t") }
+            .map { line -> line.split("\t", limit = 2).let { VideoItem(it[0], it[1]) } }
+
+    private fun saveVideos(list: List<VideoItem>) {
+        prefs.edit().putString("videos", list.joinToString("\n") { it.title + "\t" + it.url }).apply()
+        videoVersion++
+    }
+
+    fun addVideo(title: String, url: String) {
+        val t = title.replace("\n", " ").replace("\t", " ").trim()
+        val u = url.replace("\n", "").replace("\t", "").trim()
+        if (t.isEmpty() || u.isEmpty()) return
+        saveVideos(videos() + VideoItem(t, u))
+    }
+
+    fun removeVideo(index: Int) {
+        val l = videos().toMutableList()
+        if (index in l.indices) { l.removeAt(index); saveVideos(l) }
     }
 
     // ---- Custom (parent-recorded) voices ----

@@ -63,6 +63,9 @@ fun AppRoot(vm: AppViewModel) {
             "math" -> MathHub(vm)
             "science" -> ScienceHub(vm)
             "talk" -> TalkHub(vm)
+            "comm" -> CommHub(vm)
+            "arabic" -> ArabicHub(vm)
+            "videos" -> VideosScreen(vm)
             else -> HomeScreen(vm)
         }
         if (vm.paused) PauseOverlay(vm)
@@ -102,6 +105,7 @@ fun MenuScreen(vm: AppViewModel) {
     val entries = buildList<MenuItem> {
         if (amr) {
             add(MenuItem("🗣️", "ألعاب الكلام", Pink, "talk"))
+            add(MenuItem("🤝", "تواصل ومشاعر", Sky, "comm"))
             add(MenuItem("🔊", "نطق الكلمات", Sun, "speech"))
             add(MenuItem("🐰", "أطعم الحيوان", Mint, "feed"))
             add(MenuItem("🎈", "بالونات", Sky, "balloons"))
@@ -114,6 +118,7 @@ fun MenuScreen(vm: AppViewModel) {
             add(MenuItem("♞", "أبطال الشطرنج", Lilac, "chess"))
             add(MenuItem("🐻", "دبدوب", Peach, "buddy"))
         } else {
+            add(MenuItem("📖", "لغتي", Pink, "arabic"))
             add(MenuItem("🔤", "English", Sky, "english"))
             add(MenuItem("➕", "حساب", Mint, "math"))
             add(MenuItem("🔬", "علوم", Peach, "science"))
@@ -123,6 +128,7 @@ fun MenuScreen(vm: AppViewModel) {
             add(MenuItem("🎈", "بالونات", Sky, "balloons"))
             add(MenuItem("🎤", "صدى الصوت", Mint, "echo"))
         }
+        add(MenuItem("🎬", "فيديوهات", Lilac, "videos"))
         if (vm.photoUri != null) add(MenuItem("👨‍👩‍👧‍👦", "عيلتي", Pink, "family"))
         add(MenuItem("🌳", "شجرة النجوم", Mint, "stars"))
     }

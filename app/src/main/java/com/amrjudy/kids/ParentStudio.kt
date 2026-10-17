@@ -83,6 +83,16 @@ private fun ParentContent(vm: AppViewModel) {
         }
     }
 
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                ctx.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (e: Exception) { }
+            vm.addVideo("فيديو ${vm.videos().size + 1}", uri.toString())
+            info = "تمت إضافة الفيديو ✅"
+        }
+    }
+
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -147,6 +157,52 @@ private fun ParentContent(vm: AppViewModel) {
                     }
                 }
             }
+        }
+
+        Text("🎬 فيديوهات تعليمية للأطفال", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
+        Text(
+            "الأطفال بيشوفوا بس الفيديوهات اللي تضيفوها هنا. تقدر تضيف رابط (زي يوتيوب) أو فيديو من الموبايل.",
+            fontSize = 15.sp, color = Ink
+        )
+        var vTitle by remember { mutableStateOf("") }
+        var vUrl by remember { mutableStateOf("") }
+        OutlinedTextField(
+            value = vTitle, onValueChange = { vTitle = it.take(40) },
+            label = { Text("اسم الفيديو") }, singleLine = true
+        )
+        OutlinedTextField(
+            value = vUrl, onValueChange = { vUrl = it.take(300) },
+            label = { Text("رابط الفيديو") }, singleLine = true
+        )
+        Button(enabled = vTitle.isNotBlank() && vUrl.startsWith("http"), onClick = {
+            vm.addVideo(vTitle, vUrl); vTitle = ""; vUrl = ""; info = "تمت إضافة الفيديو ✅"
+        }) { Text("أضف الرابط") }
+        Button(onClick = { videoPicker.launch(arrayOf("video/*")) }) { Text("اختيار فيديو من الموبايل") }
+        val savedVideos = remember(vm.videoVersion) { vm.videos() }
+        savedVideos.forEachIndexed { i, v ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("🎬 ${v.title}", fontSize = 17.sp, color = Ink, modifier = Modifier.weight(1f))
+                Button(onClick = { vm.removeVideo(i) }) { Text("🗑") }
+            }
+        }
+        Text("ابحث عن فيديوهات (بتفتح يوتيوب، انسخ الرابط وضيفه فوق):", fontSize = 15.sp, color = Ink)
+        for ((label, query) in listOf(
+            "حروف الهجاء للأطفال" to "حروف الهجاء للأطفال",
+            "تعليم النطق للأطفال" to "تعليم النطق للأطفال تأخر الكلام",
+            "أصوات الحيوانات للأطفال" to "أصوات الحيوانات للأطفال",
+            "الأرقام والعد للأطفال" to "تعليم الأرقام للأطفال"
+        )) {
+            Button(onClick = {
+                try {
+                    val i = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        Uri.parse("https://www.youtube.com/results?search_query=" + Uri.encode(query))
+                    )
+                    i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    ctx.startActivity(i)
+                } catch (e: Exception) { info = "ما قدرتش أفتح يوتيوب" }
+            }) { Text("🔎 $label", fontSize = 13.sp) }
         }
 
         Text("🔑 تغيير الرقم السري", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
