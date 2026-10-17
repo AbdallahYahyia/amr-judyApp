@@ -514,6 +514,53 @@ fun ScienceHub(vm: AppViewModel) {
                     listOf(yes, no), en = true
                 )
             },
+            HubCard("👶", "Life Stages", Sun) {
+                val baby = "baby"; val child = "child"; val adult = "adult"; val old = "grandparent"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("👶", "Who is this?", baby), MapItem("🧒", "Who is this?", child),
+                        MapItem("👦", "Who is this?", child), MapItem("👧", "Who is this?", child),
+                        MapItem("👨", "Who is this?", adult), MapItem("👩", "Who is this?", adult),
+                        MapItem("👴", "Who is this?", old), MapItem("👵", "Who is this?", old)
+                    ),
+                    listOf(baby, child, adult, old), en = true, glyphSize = 110
+                )
+            },
+            HubCard("➡️", "What Comes Next?", Pink) {
+                val baby = "baby"; val child = "child"; val teen = "teenager"; val adult = "adult"; val old = "elderly person"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("👶", "We all start as a baby. What stage comes after baby?", child),
+                        MapItem("🧒", "What stage comes after child?", teen),
+                        MapItem("🧑", "What stage comes after teenager?", adult),
+                        MapItem("👨", "What stage comes after adult?", old),
+                        MapItem("🧒", "What stage comes before teenager?", child),
+                        MapItem("🧑", "What stage comes before adult?", teen),
+                        MapItem("👴", "What stage comes before elderly person?", adult),
+                        MapItem("👶", "Which stage is the first one in life?", baby)
+                    ),
+                    listOf(baby, child, teen, adult, old), en = true
+                )
+            },
+            HubCard("🧬", "Growing Up", Lilac) {
+                val baby = "baby"; val child = "child"; val adult = "adult"; val old = "grandparent"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("🍼", "Who drinks milk from a bottle?", baby),
+                        MapItem("🚼", "Who crawls and cannot walk yet?", baby),
+                        MapItem("🏫", "Who goes to school to learn?", child),
+                        MapItem("⚽", "Who plays and grows taller every year?", child),
+                        MapItem("💼", "Who goes to work to earn money?", adult),
+                        MapItem("🚗", "Who can drive a car?", adult),
+                        MapItem("🦳", "Who has white hair and a lot of wisdom?", old),
+                        MapItem("🦯", "Who may need a walking stick?", old)
+                    ),
+                    listOf(baby, child, adult, old), en = true
+                )
+            },
             HubCard("🌱", "Living or Not", Mint) {
                 val alive = "living 🌱"; val notAlive = "non-living 🪨"
                 MapQuiz(
