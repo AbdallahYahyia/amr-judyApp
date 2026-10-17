@@ -439,6 +439,81 @@ fun ScienceHub(vm: AppViewModel) {
                     listOf("eyes 👁️", "ears 👂", "nose 👃", "tongue 👅", "hands ✋"), en = true
                 )
             },
+            HubCard("🧒", "My Body", Pink) {
+                val head = "head"; val arms = "arms"; val legs = "legs"; val hands = "hands"; val feet = "feet"; val eyes = "eyes"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("🧒", "Which part do we think with?", head),
+                        MapItem("🏃", "Which part helps us to run and jump?", legs),
+                        MapItem("✏️", "Which part do we write with?", hands),
+                        MapItem("🤗", "Which part do we use to hug?", arms),
+                        MapItem("👟", "Which part do we wear shoes on?", feet),
+                        MapItem("📖", "Which part do we read with?", eyes)
+                    ),
+                    listOf(head, arms, legs, hands, feet, eyes), en = true
+                )
+            },
+            HubCard("🧠", "Body Organs", Lilac) {
+                val brain = "brain"; val heart = "heart"; val lungs = "lungs"; val stomach = "stomach"; val bones = "bones"; val muscles = "muscles"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("🧠", "Which organ helps us think?", brain),
+                        MapItem("❤️", "Which organ pumps blood?", heart),
+                        MapItem("🌬️", "Which organs help us breathe?", lungs),
+                        MapItem("🍽️", "Where does our food go to be digested?", stomach),
+                        MapItem("🦴", "What holds our body up?", bones),
+                        MapItem("💪", "What helps us move?", muscles)
+                    ),
+                    listOf(brain, heart, lungs, stomach, bones, muscles), en = true
+                )
+            },
+            HubCard("❤️", "Heart & Blood", Pink) {
+                val heart = "heart"; val vessels = "blood vessels"; val blood = "blood"; val lungs = "lungs"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("❤️", "What pumps blood around the body?", heart),
+                        MapItem("🩸", "What tubes carry blood around the body?", vessels),
+                        MapItem("🩸", "What is the red liquid that flows inside our body?", blood),
+                        MapItem("🌬️", "Which organs give the blood fresh air (oxygen)?", lungs),
+                        MapItem("🔄", "What goes around and around in our circulation?", blood)
+                    ),
+                    listOf(heart, vessels, blood, lungs), en = true
+                )
+            },
+            HubCard("💓", "Heart Facts", Sun) {
+                val yes = "yes ✅"; val no = "no ❌"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("🏃", "Does your heart beat faster when you run?", yes),
+                        MapItem("😴", "Does your heart stop when you sleep?", no),
+                        MapItem("💪", "Is the heart a strong muscle?", yes),
+                        MapItem("✋", "Can you feel your pulse in your wrist?", yes),
+                        MapItem("🏠", "Is your heart as big as a house?", no),
+                        MapItem("🩸", "Does blood travel all around your body?", yes),
+                        MapItem("🛌", "Does your heart beat slower when you rest?", yes)
+                    ),
+                    listOf(yes, no), en = true
+                )
+            },
+            HubCard("🪥", "Healthy Habits", Mint) {
+                val yes = "yes ✅"; val no = "no ❌"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("🪥", "Should we brush our teeth every day?", yes),
+                        MapItem("🧼", "Should we wash our hands before eating?", yes),
+                        MapItem("🍬", "Is it good to eat sweets all day?", no),
+                        MapItem("🏃", "Is exercise good for our heart?", yes),
+                        MapItem("😴", "Do we need sleep to grow strong?", yes),
+                        MapItem("📺", "Is it good to watch TV all day?", no)
+                    ),
+                    listOf(yes, no), en = true
+                )
+            },
             HubCard("🌱", "Living or Not", Mint) {
                 val alive = "living 🌱"; val notAlive = "non-living 🪨"
                 MapQuiz(

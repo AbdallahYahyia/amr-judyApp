@@ -93,10 +93,39 @@ private fun ParentContent(vm: AppViewModel) {
         }
     }
 
+    val backupSaver = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri: Uri? ->
+        if (uri != null) {
+            info = try {
+                ctx.contentResolver.openOutputStream(uri)?.use { Backup.write(ctx, it) }
+                "تم حفظ النسخة الاحتياطية ✅"
+            } catch (e: Exception) { "ما قدرتش أحفظ النسخة الاحتياطية" }
+        }
+    }
+    val backupLoader = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            info = try {
+                val n = ctx.contentResolver.openInputStream(uri)?.use { Backup.read(ctx, it) } ?: -1
+                if (n < 0) "الملف ده مش نسخة احتياطية صحيحة"
+                else { vm.reloadFromPrefs(); refresh++; "تم الاسترجاع ✅ (الإعدادات و$n تسجيل صوت)" }
+            } catch (e: Exception) { "ما قدرتش أسترجع النسخة" }
+        }
+    }
+
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        Text("💾 نسخة احتياطية", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
+        Text(
+            "بتحفظ الإعدادات، الرقم السري، النجوم، تسجيلات صوتك، صورة العيلة وقايمة الفيديوهات في ملف واحد. احتفظ بيه (مثلاً في جوجل درايف) عشان ترجّعه لو غيرت الموبايل.",
+            fontSize = 15.sp, color = Ink
+        )
+        Button(onClick = { backupSaver.launch("amr-judy-backup.zip") }) { Text("💾 احفظ نسخة احتياطية") }
+        Button(onClick = { backupLoader.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }) {
+            Text("♻️ استرجع من نسخة احتياطية")
+        }
+        Text("(فيديوهات الموبايل نفسها مش بتتحفظ، الروابط بس. اضفها تاني لو غيرت الموبايل.)", fontSize = 13.sp, color = Ink)
+
         Text("📷 صورة العيلة", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
         Button(onClick = { picker.launch("image/*") }) { Text("اختيار صورة") }
 

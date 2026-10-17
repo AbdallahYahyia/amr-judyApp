@@ -128,6 +128,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putString("photo", uri).apply()
     }
 
+    /** Re-reads everything from the saved settings (after a restore from backup). */
+    fun reloadFromPrefs() {
+        stars = prefs.getInt("stars", 0)
+        photoUri = prefs.getString("photo", null)
+        speech.preferredVoice = prefs.getString("voice", null)
+        videoVersion++
+    }
+
     // ---- Parent-curated videos (links or videos from the phone) ----
     var videoVersion by mutableIntStateOf(0)
         private set
