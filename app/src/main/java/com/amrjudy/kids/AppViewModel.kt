@@ -28,6 +28,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         speech.preferredVoice = prefs.getString("voice", null)
+        prefs.getString("tts_engine", null)?.let { speech.setEngine(it) }
         // Anything the parent recorded is played instead of the robot voice, for every spoken text.
         speech.recordedPlayer = { text -> playRecorded(text) }
     }
@@ -61,6 +62,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun chooseVoice(name: String) {
         prefs.edit().putString("voice", name).apply()
         speech.preferredVoice = name
+    }
+    fun chooseEngine(pkg: String?) {
+        prefs.edit().putString("tts_engine", pkg).apply()
+        speech.setEngine(pkg)
     }
     fun savedVoice(): String? = prefs.getString("voice", null)
 

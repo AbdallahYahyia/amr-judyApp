@@ -129,6 +129,68 @@ private fun ParentContent(vm: AppViewModel) {
         Text("📷 صورة العيلة", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
         Button(onClick = { picker.launch("image/*") }) { Text("اختيار صورة") }
 
+        Text("🛠️ حل مشكلة الصوت (هواوي وموبايلات من غير جوجل)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
+        Text(
+            if (vm.speech.arabicOk) "حالة الصوت العربي: شغال ✅" else "حالة الصوت العربي: مش متاح ❌",
+            fontSize = 17.sp, color = Ink
+        )
+        Text(
+            "موبايلات هواوي الجديدة مفيهاش خدمات جوجل، فمفيش صوت عربي ولا تعرّف على الكلام. فيه حلّين:\n" +
+                "١) سجّل صوتك أو صوت ماما (الأحسن ويطلع بلهجة مصرية): استخدم «سجّل الكل بالترتيب» تحت.\n" +
+                "٢) ركّب محرك صوت عربي من برّه جوجل بلاي: افتح الصفحة تحت، نزّل ملف عربي (ara) واحد مناسب لموبايلك (arm64-v8a غالباً)، ثبّته، وبعدين اختاره من القايمة هنا.\n" +
+                "التعرف على كلام الطفل مش هيشتغل من غير جوجل، فالتطبيق بيكتفي بإنه يسمع صوت الطفل ويديله نجوم على المحاولة.",
+            fontSize = 15.sp, color = Ink
+        )
+        Button(onClick = {
+            try {
+                val i = android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    Uri.parse("https://k2-fsa.github.io/sherpa/onnx/tts/apk-engine.html")
+                )
+                i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                ctx.startActivity(i)
+            } catch (e: Exception) { info = "ما قدرتش أفتح المتصفح" }
+        }) { Text("🌐 صفحة تحميل محركات الصوت العربية", fontSize = 13.sp) }
+        var engines by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+        Button(onClick = { engines = vm.speech.engines() }) { Text("عرض محركات الصوت اللي على الموبايل", fontSize = 13.sp) }
+        for ((pkg, label) in engines) {
+            Button(onClick = {
+                vm.chooseEngine(pkg)
+                info = "تم اختيار: $label"
+            }) { Text((if (vm.speech.currentEngine() == pkg) "✅ " else "") + label, fontSize = 13.sp) }
+        }
+        if (engines.isNotEmpty()) {
+            Button(onClick = { vm.chooseEngine(null); info = "رجعنا لمحرك الموبايل الافتراضي" }) {
+                Text("رجوع للمحرك الافتراضي", fontSize = 13.sp)
+            }
+            Button(onClick = { vm.speech.recheck(); info = "اتعمل فحص تاني للصوت" }) { Text("فحص الصوت تاني", fontSize = 13.sp) }
+        }
+
+        Text("🎙️ سجّل الكل بالترتيب", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
+        var guide by remember { mutableStateOf(listOf<String>()) }
+        var gi by remember { mutableStateOf(0) }
+        if (guide.isEmpty() || gi >= guide.size) {
+            if (guide.isNotEmpty()) Text("خلصت التسجيل ✅", color = Ink)
+            Button(enabled = recording == null, onClick = {
+                guide = (VOICE_KEYS + arabicLetterNames()).distinct().filter { !vm.hasCustomVoice(it) }
+                gi = 0
+            }) { Text("ابدأ (الكلمات اللي لسه ما اتسجلتش)", fontSize = 13.sp) }
+        } else {
+            val cur = guide[gi]
+            Text("قول بوضوح: $cur  (${gi + 1}/${guide.size})", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(enabled = recording == null, onClick = {
+                    recording = cur
+                    Thread {
+                        try { echo.record(3); vm.saveCustomVoice(cur, echo) } catch (e: Exception) { }
+                        recording = null; refresh++; gi++
+                    }.start()
+                }) { Text(if (recording == cur) "⏺ بيسجّل..." else "⏺ سجّل") }
+                Button(enabled = recording == null, onClick = { gi++ }) { Text("تخطي") }
+                Button(enabled = recording == null, onClick = { guide = emptyList() }) { Text("إيقاف") }
+            }
+        }
+
         Text("🔊 صوت الكلام (لهجة مصرية)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
         var voices by remember { mutableStateOf(listOf<android.speech.tts.Voice>()) }
         Button(onClick = { voices = vm.speech.arabicVoices() }) { Text("عرض الأصوات العربية في الموبايل") }

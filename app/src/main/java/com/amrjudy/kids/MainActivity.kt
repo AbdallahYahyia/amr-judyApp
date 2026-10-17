@@ -14,6 +14,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.Text
@@ -88,6 +91,7 @@ fun AppRoot(vm: AppViewModel) {
             "talk" -> TalkHub(vm)
             "comm" -> CommHub(vm)
             "arabic" -> ArabicHub(vm)
+            "letters" -> AmrLettersHub(vm)
             "videos" -> VideosScreen(vm)
             else -> HomeScreen(vm)
         }
@@ -129,6 +133,7 @@ fun MenuScreen(vm: AppViewModel) {
         if (amr) {
             add(MenuItem("🗣️", "ألعاب الكلام", Pink, "talk"))
             add(MenuItem("🤝", "تواصل ومشاعر", Sky, "comm"))
+            add(MenuItem("🔠", "الحروف", Lilac, "letters"))
             add(MenuItem("🔊", "نطق الكلمات", Sun, "speech"))
             add(MenuItem("🐰", "أطعم الحيوان", Mint, "feed"))
             add(MenuItem("🎈", "بالونات", Sky, "balloons"))
@@ -163,6 +168,15 @@ fun MenuScreen(vm: AppViewModel) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            if (!vm.speech.arabicOk) item(span = { GridItemSpan(2) }) {
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFFFFE3E3))
+                        .clickable { vm.go("parent") }.padding(12.dp)
+                ) {
+                    Text("🔇 الموبايل ده مفيهوش صوت عربي", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Ink)
+                    Text("اطلب من الأهل: اضغط هنا ← لوحة الأب ← حل مشكلة الصوت", fontSize = 14.sp, color = Ink)
+                }
+            }
             items(entries) { e ->
                 BigCard(e.emoji, e.label, e.color, Modifier.fillMaxWidth().height(150.dp), 56.sp) { vm.go(e.screen) }
             }

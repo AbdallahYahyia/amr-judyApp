@@ -10,6 +10,9 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import java.util.Locale
 
 /**
@@ -33,20 +36,57 @@ class SpeechHelper(private val context: Context) {
     var preferredVoice: String? = null
         set(value) { field = value; if (ttsReady) applyVoice() }
 
-    init {
-        tts = TextToSpeech(context) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                var r = tts?.setLanguage(Locale("ar", "EG"))
-                if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    r = tts?.setLanguage(Locale("ar"))
-                }
-                ttsReady = r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED
-                tts?.setSpeechRate(0.8f)   // slower, clearer for small children
-                tts?.setPitch(1.1f)
-                if (ttsReady) applyVoice()
+    /** False when the phone's speech engine has no Arabic (e.g. Huawei phones without Google services). */
+    var arabicOk by mutableStateOf(true)
+        private set
+
+    /** Package of the speech engine the parent picked (null = the phone's default). */
+    private var enginePkg: String? = null
+
+    private val onInit = TextToSpeech.OnInitListener { status ->
+        if (status == TextToSpeech.SUCCESS) {
+            var r = tts?.setLanguage(Locale("ar", "EG"))
+            if (r == null || r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
+                r = tts?.setLanguage(Locale("ar"))
             }
+            ttsReady = r != null && r != TextToSpeech.LANG_MISSING_DATA && r != TextToSpeech.LANG_NOT_SUPPORTED
+            arabicOk = ttsReady
+            tts?.setSpeechRate(0.8f)   // slower, clearer for small children
+            tts?.setPitch(1.1f)
+            if (ttsReady) applyVoice()
+        } else {
+            ttsReady = false
+            arabicOk = false
         }
     }
+
+    private fun startTts() {
+        tts = try {
+            val pkg = enginePkg
+            if (pkg != null) TextToSpeech(context, onInit, pkg) else TextToSpeech(context, onInit)
+        } catch (e: Exception) { null }
+        if (tts == null) arabicOk = false
+    }
+
+    init { startTts() }
+
+    /** Speech engines installed on the phone: (package, label). */
+    fun engines(): List<Pair<String, String>> =
+        try { tts?.engines?.map { it.name to it.label } ?: emptyList() } catch (e: Exception) { emptyList() }
+
+    fun currentEngine(): String? = try { tts?.defaultEngine } catch (e: Exception) { null }
+
+    /** Switches to another installed speech engine (e.g. an Arabic one the parent installed). */
+    fun setEngine(pkg: String?) {
+        englishMode = false
+        try { tts?.stop(); tts?.shutdown() } catch (e: Exception) { }
+        tts = null; ttsReady = false
+        enginePkg = pkg
+        startTts()
+    }
+
+    /** Re-checks the Arabic language (after installing a voice). */
+    fun recheck() = setEngine(enginePkg)
 
     /** All Arabic voices installed on the phone, Egyptian ones first. */
     fun arabicVoices(): List<Voice> {

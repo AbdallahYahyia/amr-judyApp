@@ -42,6 +42,95 @@ private val BUILD_WORDS = listOf(
 private fun letterChoices(answer: AL): List<String> =
     (listOf(answer.ch) + ALPHA.filter { it !== answer }.shuffled().take(3).map { it.ch }).shuffled()
 
+fun arabicLetterNames(): List<String> = ALPHA.map { it.name }
+
+/** Words with full diacritics (tashkeel) for first-grade reading. */
+private val TASHKEEL = mapOf(
+    "أرنب" to "أَرْنَب", "بطة" to "بَطَّة", "تفاحة" to "تُفَّاحَة", "ثعلب" to "ثَعْلَب", "جمل" to "جَمَل",
+    "حصان" to "حِصَان", "خروف" to "خَرُوف", "دب" to "دُبّ", "ذرة" to "ذُرَة", "راديو" to "رَادْيُو",
+    "زرافة" to "زَرَافَة", "سمكة" to "سَمَكَة", "شمس" to "شَمْس", "صقر" to "صَقْر", "ضفدع" to "ضِفْدَع",
+    "طيارة" to "طَيَّارَة", "ظرف" to "ظَرْف", "عصفور" to "عُصْفُور", "غزال" to "غَزَال", "فيل" to "فِيل",
+    "قرد" to "قِرْد", "كلب" to "كَلْب", "ليمون" to "لَيْمُون", "موزة" to "مَوْزَة", "نحلة" to "نَحْلَة",
+    "هلال" to "هِلَال", "وردة" to "وَرْدَة", "يد" to "يَد"
+)
+
+private fun tk(l: AL): String = TASHKEEL[l.word] ?: l.word
+
+private val SENTENCES = listOf(
+    "🏫" to "ذَهَبْتُ إِلَى الْمَدْرَسَةِ", "📖" to "أَقْرَأُ الْكِتَابَ", "🐱" to "الْقِطَّةُ تَشْرَبُ اللَّبَنَ",
+    "🌞" to "الشَّمْسُ مُشْرِقَةٌ", "👩" to "أُحِبُّ أُمِّي", "👨" to "أَبِي يَذْهَبُ إِلَى الْعَمَلِ",
+    "🍎" to "أَكَلْتُ تُفَّاحَةً", "🌙" to "الْقَمَرُ جَمِيلٌ", "🐟" to "السَّمَكُ يَسْبَحُ فِي الْمَاءِ",
+    "🌹" to "الْوَرْدَةُ جَمِيلَةٌ"
+)
+
+// Diacritic marks: fatha, damma, kasra, sukun, shadda, tanween fath
+private val MARKS = listOf(
+    "\u064E" to "فتحة", "\u064F" to "ضمة", "\u0650" to "كسرة",
+    "\u0652" to "سكون", "\u0651" to "شدة", "\u064B" to "تنوين فتح"
+)
+
+private fun markNameQ(): MQ {
+    val l = ALPHA.random(); val m = MARKS.random()
+    val choices = (listOf(m.second) + MARKS.filter { it !== m }.shuffled().take(3).map { it.second }).shuffled()
+    return MQ(l.ch + m.first, "إيه اسم العلامة اللي على الحرف؟", "إيه اسم العلامة اللي على الحرف؟", choices, m.second)
+}
+
+private fun readingQ(): MQ {
+    val l = ALPHA.random()
+    val i = (0..2).random()
+    val sounds = listOf(l.ch + "ا", l.ch + "و", l.ch + "ي")
+    return MQ(l.ch + MARKS[i].first, "بتتقرأ إزاي؟", "الحرف ده بيتقرأ إزاي؟", sounds.shuffled(), sounds[i])
+}
+
+private fun wordPictureQ(): MQ {
+    val l = ALPHA.random()
+    val choices = (listOf(tk(l)) + ALPHA.filter { it !== l }.shuffled().take(3).map { tk(it) }).shuffled()
+    return MQ(l.emoji, "اقرأ واختار الكلمة الصح", "إيه اسم الصورة دي؟ اقرأ الكلمات واختار", choices, tk(l))
+}
+
+private fun listenWordQ(): MQ {
+    val l = ALPHA.random()
+    val choices = (listOf(tk(l)) + ALPHA.filter { it !== l }.shuffled().take(3).map { tk(it) }).shuffled()
+    return MQ("🔊", "اسمع واختار الكلمة", l.word, choices, tk(l))
+}
+
+/** Letters for Amr (3 years): hear the letter, find it, say it, and say letter + vowel sounds (با، بو، بي). */
+@Composable
+fun AmrLettersHub(vm: AppViewModel) {
+    Hub(
+        vm, "الحروف",
+        listOf(
+            HubCard("🔤", "اتعرف على الحروف", Sky) { LetterExplorer(vm) },
+            HubCard("👂", "فين الحرف؟", Mint) {
+                QuizRunner(vm, glyphSize = 80) {
+                    val l = ALPHA.random()
+                    val ch = (listOf(l.ch) + ALPHA.filter { it !== l }.shuffled().take(2).map { it.ch }).shuffled()
+                    MQ(l.emoji, "فين حرف ${l.name}؟", "فين حرف ${l.name}؟", ch, l.ch)
+                }
+            },
+            HubCard("🗣️", "قول الحرف", Pink) {
+                SayItScreen(vm, ALPHA.map { SayItItem(it.emoji, it.name, "${it.ch}  ${it.name}") }, manual = true)
+            },
+            HubCard("🔊", "با - بو - بي", Peach) {
+                SayItScreen(
+                    vm,
+                    ALPHA.flatMap { l ->
+                        listOf(
+                            SayItItem("👄", l.ch + "ا", l.ch + MARKS[0].first),
+                            SayItItem("👄", l.ch + "و", l.ch + MARKS[1].first),
+                            SayItItem("👄", l.ch + "ي", l.ch + MARKS[2].first)
+                        )
+                    },
+                    manual = true
+                )
+            },
+            HubCard("🖼️", "حرف وكلمة", Sun) {
+                SayItScreen(vm, ALPHA.map { SayItItem(it.emoji, it.word, "${it.ch}  ${it.word}") }, manual = true)
+            }
+        )
+    )
+}
+
 /** Judy's Arabic language lessons (first grade). */
 @Composable
 fun ArabicHub(vm: AppViewModel) {
@@ -70,7 +159,17 @@ fun ArabicHub(vm: AppViewModel) {
             HubCard("🧩", "ركّب الكلمة", Lilac) { WordBuild(vm) },
             HubCard("🗣️", "انطق", Pink) {
                 SayItScreen(vm, ALPHA.map { SayItItem(it.emoji, it.word, "${it.ch}  ${it.word}") })
-            }
+            },
+            HubCard("✨", "كلمات بالتشكيل", Sun) {
+                SayItScreen(vm, ALPHA.map { SayItItem(it.emoji, it.word, tk(it)) })
+            },
+            HubCard("📝", "جمل بالتشكيل", Sky) {
+                SayItScreen(vm, SENTENCES.map { SayItItem(it.first, it.second) })
+            },
+            HubCard("🔣", "اسم الحركة", Peach) { QuizRunner(vm, glyphSize = 110) { markNameQ() } },
+            HubCard("🔊", "بتتقرأ إزاي؟", Lilac) { QuizRunner(vm, glyphSize = 110) { readingQ() } },
+            HubCard("🖼️", "صل الكلمة بالصورة", Mint) { QuizRunner(vm, glyphSize = 100) { wordPictureQ() } },
+            HubCard("👂", "اسمع واختار", Pink) { QuizRunner(vm, glyphSize = 80) { listenWordQ() } }
         )
     )
 }
