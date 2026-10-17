@@ -9,7 +9,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +27,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val filled = mapOf(
-    'k' to "♚", 'q' to "♛", 'r' to "♜", 'b' to "♝", 'n' to "♞", 'p' to "♟"
+    'k' to "♚\uFE0E", 'q' to "♛\uFE0E", 'r' to "♜\uFE0E", 'b' to "♝\uFE0E", 'n' to "♞\uFE0E", 'p' to "♟\uFE0E"
 )
 
 private class PieceInfo(val code: Char, val nameAr: String, val say: String, val color: Color)
@@ -32,19 +35,21 @@ private class PieceInfo(val code: Char, val nameAr: String, val say: String, val
 private val PIECES = listOf(
     PieceInfo('p', "البيدق", "أنا البيدق، بمشي خطوة خطوة", Mint),
     PieceInfo('n', "الحصان", "أنا الحصان، بنط بنط", Peach),
-    PieceInfo('r', "القلعة", "أنا القلعة، بجري مستقيم", Sky),
+    PieceInfo('r', "الطابية", "أنا الطابية، بجري مستقيم", Sky),
     PieceInfo('b', "الفيل", "أنا الفيل، بمشي بالعرض", Lilac),
-    PieceInfo('q', "الوزيرة", "أنا الوزيرة، أنا أقوى واحدة", Pink),
+    PieceInfo('q', "الوزير", "أنا الوزير، أنا أقوى واحد", Pink),
     PieceInfo('k', "الملك", "أنا الملك، لازم تحميني", Sun)
 )
 
-/** The 8x8 board. Targets glow; the star square shows a star. */
+/** The 8x8 board. Pieces sit on round tokens; targets glow; last move and check are tinted. */
 @Composable
 fun BoardView(
     chess: Chess,
     selected: Int?,
     targets: Set<Int>,
     starSq: Int?,
+    lastMove: Pair<Int, Int>? = null,
+    checkSq: Int = -1,
     onTap: (Int) -> Unit
 ) {
     val t = rememberInfiniteTransition(label = "glow")
@@ -56,28 +61,31 @@ fun BoardView(
             Row(Modifier.fillMaxWidth()) {
                 for (c in 0 until 8) {
                     val i = r * 8 + c
-                    val light = (r + c) % 2 == 0
-                    val base = if (light) Color(0xFFFFF3C4) else Color(0xFF9ED8A8)
+                    var bg = if ((r + c) % 2 == 0) Color(0xFFFFF3C4) else Color(0xFF9ED8A8)
+                    if (lastMove != null && (i == lastMove.first || i == lastMove.second)) bg = Color(0xFFFFE066)
+                    if (i == checkSq) bg = Color(0xFFFF8787)
+                    if (selected == i) bg = Color(0xFFFFD43B)
+                    val p = chess.b[i]
                     Box(
-                        Modifier.weight(1f).aspectRatio(1f)
-                            .background(if (selected == i) Color(0xFFFFD43B) else base)
-                            .clickable { onTap(i) },
+                        Modifier.weight(1f).aspectRatio(1f).background(bg).clickable { onTap(i) },
                         contentAlignment = Alignment.Center
                     ) {
                         if (i in targets) {
-                            Box(Modifier.fillMaxSize().background(Color(0xFFFF6B6B).copy(alpha = glow * 0.55f)))
-                            Text("●", fontSize = 18.sp, color = Color(0xFFE03131).copy(alpha = glow))
+                            if (p == '.') Text("●", fontSize = 18.sp, color = Color(0xFFE03131).copy(alpha = glow))
+                            else Box(Modifier.fillMaxSize().border(4.dp, Color(0xFFE03131).copy(alpha = glow)))
                         }
-                        if (starSq == i && chess.b[i] != '.') {
-                            Text("⭐", fontSize = 12.sp, modifier = Modifier.align(Alignment.TopEnd))
-                        }
-                        val p = chess.b[i]
                         if (p != '.') {
-                            Text(
-                                filled[p.lowercaseChar()] ?: "",
-                                fontSize = 30.sp,
-                                color = if (Chess.isWhite(p)) Color(0xFFFF7043) else Ink
-                            )
+                            val white = Chess.isWhite(p)
+                            val ring = if (white) Color(0xFFFF7043) else Color(0xFFFFF3C4)
+                            Box(
+                                Modifier.fillMaxSize(0.84f).clip(CircleShape)
+                                    .background(if (white) Color.White else Ink)
+                                    .border(2.dp, ring, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(filled[p.lowercaseChar()] ?: "", fontSize = 24.sp, color = ring)
+                            }
+                            if (starSq == i) Text("⭐", fontSize = 12.sp, modifier = Modifier.align(Alignment.TopEnd))
                         }
                     }
                 }
@@ -236,7 +244,7 @@ private fun AmrKnightJump(vm: AppViewModel) {
                             contentAlignment = Alignment.Center
                         ) {
                             when (i) {
-                                knight -> Text("♞", fontSize = 40.sp, color = Color(0xFFFF7043))
+                                knight -> Text("♞\uFE0E", fontSize = 40.sp, color = Color(0xFFFF7043))
                                 apple -> Bouncy { Text("🍎", fontSize = 36.sp) }
                             }
                         }
@@ -254,10 +262,10 @@ private class Lesson(val code: Char, val title: String, val tip: String)
 
 private val LESSONS = listOf(
     Lesson('P', "البيدق", "البيدق يمشي خطوة لقدّام، ويأكل بالقُطر"),
-    Lesson('R', "القلعة", "القلعة تجري مستقيم، لقدام ولورا وجنب"),
+    Lesson('R', "الطابية", "الطابية تجري مستقيم، لقدام ولورا وجنب"),
     Lesson('B', "الفيل", "الفيل يمشي بالعرض على نفس اللون"),
     Lesson('N', "الحصان", "الحصان يقفز على شكل حرف L"),
-    Lesson('Q', "الوزيرة", "الوزيرة تمشي مستقيم وبالعرض، هي الأقوى"),
+    Lesson('Q', "الوزير", "الوزير يمشي مستقيم وبالعرض، هو الأقوى"),
     Lesson('K', "الملك", "الملك يمشي خطوة واحدة في أي اتجاه")
 )
 
@@ -323,51 +331,123 @@ private fun ChessPuzzles(vm: AppViewModel) {
     }
 }
 
+private class Snap(val game: Chess, val last: Pair<Int, Int>?)
+
+private fun lostPieces(g: Chess, white: Boolean): String {
+    val start = listOf('q' to 1, 'r' to 2, 'b' to 2, 'n' to 2, 'p' to 8)
+    val sb = StringBuilder()
+    for ((k, n) in start) {
+        val ch = if (white) k.uppercaseChar() else k
+        val have = g.b.count { it == ch }
+        repeat((n - have).coerceAtLeast(0)) { sb.append(filled[k]) }
+    }
+    return sb.toString()
+}
+
 @Composable
 private fun ChessPlay(vm: AppViewModel, vsAi: Boolean) {
+    fun turnMsg(g: Chess) =
+        if (vsAi) "دورك يا جودي" else if (g.whiteTurn) "دور الأبيض (جودي)" else "دور الأسود (عمرو)"
+
     var game by remember { mutableStateOf(Chess()) }
+    var last by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var history by remember { mutableStateOf(listOf<Snap>()) }
     var sel by remember { mutableStateOf<Int?>(null) }
+    var hint by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     var over by remember { mutableStateOf(false) }
-    var msg by remember { mutableStateOf(if (vsAi) "دورك يا جودي" else "دور الأبيض (جودي)") }
+    var level by remember { mutableStateOf(0) }
     var thinking by remember { mutableStateOf(false) }
+    var msg by remember { mutableStateOf(turnMsg(Chess())) }
     val scope = rememberCoroutineScope()
+
+    fun commit(from: Int, to: Int): Chess {
+        history = history + Snap(game, last)
+        val g = game.make(from, to)
+        game = g; last = from to to; sel = null; hint = null
+        return g
+    }
 
     fun afterMove(g: Chess, mover: String) {
         when {
-            g.isCheckmate() -> { over = true; msg = "كش مات! فاز $mover 🏆"; vm.speech.speak("كش مات! برافو"); if (mover != "الروبوت") vm.addStars(3) }
+            g.isCheckmate() -> {
+                over = true; msg = "كش مات! فاز $mover 🏆"
+                vm.speech.speak("كش مات! برافو")
+                if (mover != "الروبوت") vm.addStars(3)
+            }
             g.isStalemate() -> { over = true; msg = "تعادل 🤝" }
             g.inCheck(g.whiteTurn) -> { msg = "كش! 👑"; vm.speech.speak("كش") }
-            else -> msg = if (vsAi) "دورك يا جودي" else if (g.whiteTurn) "دور الأبيض (جودي)" else "دور الأسود (عمرو)"
+            else -> msg = turnMsg(g)
         }
     }
 
-    Column(Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(msg, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(6.dp))
-        val targets = sel?.let { game.legalMoves(it).toSet() } ?: emptySet()
-        BoardView(game, sel, targets, null) { i ->
+    fun undo() {
+        if (history.isEmpty() || thinking) return
+        val n = (if (vsAi && game.whiteTurn) 2 else 1).coerceAtMost(history.size)
+        val snap = history[history.size - n]
+        game = snap.game; last = snap.last
+        history = history.dropLast(n)
+        over = false; sel = null; hint = null
+        msg = turnMsg(game)
+    }
+
+    val checkSq = if (game.inCheck(game.whiteTurn)) game.kingSquare(game.whiteTurn) else -1
+    val h = hint
+    val s0 = sel
+    val targets: Set<Int> =
+        if (h != null && s0 == h.first) setOf(h.second)
+        else if (s0 != null) game.legalMoves(s0).toSet()
+        else emptySet()
+
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(msg, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink, modifier = Modifier.padding(4.dp))
+        Text(
+            "الأبيض أكل: ${lostPieces(game, false)}    الأسود أكل: ${lostPieces(game, true)}",
+            fontSize = 15.sp, color = Ink
+        )
+        BoardView(game, sel, targets, null, last, checkSq) { i ->
             if (over || thinking) return@BoardView
             val s = sel
             val p = game.b[i]
             if (s != null && i in targets) {
                 val moverName = if (game.whiteTurn) "جودي" else "عمرو"
-                game = game.make(s, i); sel = null
-                afterMove(game, moverName)
+                val g = commit(s, i)
+                afterMove(g, moverName)
                 if (vsAi && !over) {
                     thinking = true
                     scope.launch {
                         delay(700)
-                        val m = game.aiMove(level = 0)
-                        if (m != null) { game = game.make(m.first, m.second); afterMove(game, "الروبوت") }
+                        val m = game.aiMove(level)
+                        if (m != null) {
+                            val g2 = commit(m.first, m.second)
+                            afterMove(g2, "الروبوت")
+                        }
                         thinking = false
                     }
                 }
             } else if (p != '.' && Chess.isWhite(p) == game.whiteTurn) sel = i
             else sel = null
         }
-        Spacer(Modifier.height(8.dp))
-        BigCard("🔄", "لعبة جديدة", Peach, Modifier.fillMaxWidth().height(80.dp), 28.sp) {
-            game = Chess(); sel = null; over = false
-            msg = if (vsAi) "دورك يا جودي" else "دور الأبيض (جودي)"
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BigCard("↩️", "رجوع", Sky, Modifier.weight(1f).height(76.dp), 24.sp) { undo() }
+            BigCard("💡", "تلميح", Sun, Modifier.weight(1f).height(76.dp), 24.sp) {
+                if (!over && !thinking) {
+                    val m = game.aiMove(1)
+                    if (m != null) { hint = m; sel = m.first; vm.speech.speak("جرّبي الحركة دي") }
+                }
+            }
+            BigCard("🔄", "جديدة", Peach, Modifier.weight(1f).height(76.dp), 24.sp) {
+                game = Chess(); last = null; history = emptyList(); sel = null; hint = null
+                over = false; thinking = false; msg = turnMsg(game)
+            }
+        }
+        if (vsAi) {
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                BigCard("🙂", "سهل", if (level == 0) Mint else Color(0xFFE9ECEF), Modifier.weight(1f).height(64.dp), 22.sp) { level = 0 }
+                BigCard("😎", "متوسط", if (level == 1) Mint else Color(0xFFE9ECEF), Modifier.weight(1f).height(64.dp), 22.sp) { level = 1 }
+            }
         }
     }
 }

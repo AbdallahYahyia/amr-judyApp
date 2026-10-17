@@ -24,6 +24,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val speech = SpeechHelper(app)
     private val voicePlayer = VoiceEcho()
 
+    init { speech.preferredVoice = prefs.getString("voice", null) }
+
+    fun chooseVoice(name: String) {
+        prefs.edit().putString("voice", name).apply()
+        speech.preferredVoice = name
+    }
+    fun savedVoice(): String? = prefs.getString("voice", null)
+
     var profile by mutableStateOf<Profile?>(null)
         private set
     var screen by mutableStateOf("home")

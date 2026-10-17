@@ -231,9 +231,9 @@ fun AnimalSounds(vm: AppViewModel) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                         BigCard("🔊", "", Sun, Modifier.size(96.dp), 40.sp) { vm.speech.speak(a.sound, pitch = 1.3f, rate = 0.7f) }
                         Spacer(Modifier.width(24.dp))
-                        MicButton(vm, a.sound.split(" ").first()) { s ->
-                            if (s < 0) msg = "ما سمعتش، قول تاني 🎤"
-                            else { win = reward(vm, s); msg = if (s > 0) "برافو!" else "كمان مرة" }
+                        SoundMicButton(vm) { s ->
+                            if (s < 0) msg = "الميكروفون مش شغال، اسمح له من إعدادات التطبيق 🎤"
+                            else { win = reward(vm, s); msg = if (s > 0) "برافو! سمعتك 👏" else "قلّد تاني بصوت عالي" }
                         }
                     }
                 }

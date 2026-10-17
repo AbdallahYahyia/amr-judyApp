@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- face -->
+    <path
+        android:fillColor="#FFD43B"
+        android:strokeColor="#F59F00"
+        android:strokeWidth="2"
+        android:pathData="M30,60 A24,24 0 1,1 78,60 A24,24 0 1,1 30,60 Z" />
+    <!-- crown (chess king hat) -->
+    <path
+        android:fillColor="#FF922B"
+        android:strokeColor="#E8590C"
+        android:strokeWidth="1.5"
+        android:pathData="M41,39 L44,26 L50,33 L54,23 L58,33 L64,26 L67,39 Z" />
+    <!-- eyes -->
+    <path
+        android:fillColor="#3B2F4A"
+        android:pathData="M42,56 A3.2,3.2 0 1,1 48.4,56 A3.2,3.2 0 1,1 42,56 Z" />
+    <path
+        android:fillColor="#3B2F4A"
+        android:pathData="M59.6,56 A3.2,3.2 0 1,1 66,56 A3.2,3.2 0 1,1 59.6,56 Z" />
+    <!-- cheeks -->
+    <path
+        android:fillColor="#FFB3C7"
+        android:pathData="M33,65 A4,4 0 1,1 41,65 A4,4 0 1,1 33,65 Z" />
+    <path
+        android:fillColor="#FFB3C7"
+        android:pathData="M67,65 A4,4 0 1,1 75,65 A4,4 0 1,1 67,65 Z" />
+    <!-- smile -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#3B2F4A"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M44,66 Q54,76 64,66" />
+</vector>

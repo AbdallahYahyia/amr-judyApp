@@ -84,6 +84,25 @@ private fun ParentContent(vm: AppViewModel) {
         Text("📷 صورة العيلة", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
         Button(onClick = { picker.launch("image/*") }) { Text("اختيار صورة") }
 
+        Text("🔊 صوت الكلام (لهجة مصرية)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
+        var voices by remember { mutableStateOf(listOf<android.speech.tts.Voice>()) }
+        Button(onClick = { voices = vm.speech.arabicVoices() }) { Text("عرض الأصوات العربية في الموبايل") }
+        if (voices.isNotEmpty()) {
+            Text(
+                if (vm.speech.isEgyptianVoiceAvailable()) "في صوت مصري ✅ (اختار واحد)"
+                else "مفيش صوت مصري. نزّل صوت عربي (مصر) من إعدادات الموبايل ↓",
+                fontSize = 16.sp, color = Ink
+            )
+            for (v in voices.take(10)) {
+                val label = (if (v.locale.country == "EG") "🇪🇬 " else "") + v.locale.displayName + " – " + v.name
+                Button(onClick = {
+                    vm.chooseVoice(v.name)
+                    vm.speech.speak("إزّيك يا عمرو؟ أنا صاحبك")
+                }) { Text(label, fontSize = 13.sp) }
+            }
+        }
+        Button(onClick = { vm.speech.openTtsSettings() }) { Text("تحميل / تغيير صوت من إعدادات الموبايل") }
+
         Text("🎙️ سجّل صوتك للكلمات (٣ ثواني لكل كلمة)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
         key(refresh) {
             for (k in VOICE_KEYS) {

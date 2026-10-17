@@ -59,6 +59,10 @@ fun AppRoot(vm: AppViewModel) {
             "stars" -> StarTree(vm)
             "family" -> FamilyAlbum(vm)
             "parent" -> ParentStudio(vm)
+            "english" -> EnglishHub(vm)
+            "math" -> MathHub(vm)
+            "science" -> ScienceHub(vm)
+            "talk" -> TalkHub(vm)
             else -> HomeScreen(vm)
         }
         if (vm.paused) PauseOverlay(vm)
@@ -97,7 +101,8 @@ fun MenuScreen(vm: AppViewModel) {
     val amr = vm.profile == Profile.AMR
     val entries = buildList<MenuItem> {
         if (amr) {
-            add(MenuItem("🗣️", "نطق", Sun, "speech"))
+            add(MenuItem("🗣️", "ألعاب الكلام", Pink, "talk"))
+            add(MenuItem("🔊", "نطق الكلمات", Sun, "speech"))
             add(MenuItem("🐰", "أطعم الحيوان", Mint, "feed"))
             add(MenuItem("🎈", "بالونات", Sky, "balloons"))
             add(MenuItem("🎤", "صدى الصوت", Lilac, "echo"))
@@ -109,9 +114,11 @@ fun MenuScreen(vm: AppViewModel) {
             add(MenuItem("♞", "أبطال الشطرنج", Lilac, "chess"))
             add(MenuItem("🐻", "دبدوب", Peach, "buddy"))
         } else {
+            add(MenuItem("🔤", "English", Sky, "english"))
+            add(MenuItem("➕", "حساب", Mint, "math"))
+            add(MenuItem("🔬", "علوم", Peach, "science"))
             add(MenuItem("♞", "أكاديمية الشطرنج", Lilac, "chess"))
-            add(MenuItem("🐻", "دبدوب", Peach, "buddy"))
-            add(MenuItem("🔢", "عدّ", Sun, "count"))
+            add(MenuItem("🐻", "دبدوب", Pink, "buddy"))
             add(MenuItem("🎨", "ألوان وأشكال", Pink, "colors"))
             add(MenuItem("🎈", "بالونات", Sky, "balloons"))
             add(MenuItem("🎤", "صدى الصوت", Mint, "echo"))

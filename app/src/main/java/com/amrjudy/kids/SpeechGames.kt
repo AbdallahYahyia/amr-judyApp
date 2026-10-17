@@ -1,5 +1,7 @@
 package com.amrjudy.kids
 
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,18 +22,28 @@ import kotlinx.coroutines.launch
 
 /** Big microphone button. Reports 0..3 stars from the fuzzy matcher, or -1 if nothing was heard. */
 @Composable
-fun MicButton(vm: AppViewModel, target: String, modifier: Modifier = Modifier, onScore: (Int) -> Unit) {
+fun MicButton(
+    vm: AppViewModel,
+    target: String,
+    modifier: Modifier = Modifier,
+    lang: String = "ar-EG",
+    onScore: (Int) -> Unit
+) {
     var listening by remember { mutableStateOf(false) }
     BigCard(
         if (listening) "👂" else "🎤", "", if (listening) Pink else Mint,
         modifier.size(96.dp), 44.sp
     ) {
         if (!listening) {
+                vm.speech.stopSpeaking()          // don't let the recogniser hear our own voice
             listening = true
-            vm.speech.listen(
-                onResult = { listening = false; onScore(Fuzzy.score(target, it)) },
-                onFail = { listening = false; onScore(-1) }
-            )
+            Handler(Looper.getMainLooper()).postDelayed({
+                vm.speech.listen(
+                    onResult = { listening = false; onScore(Fuzzy.score(target, it)) },
+                    onFail = { listening = false; onScore(-1) },
+                    lang = lang
+                )
+            }, 400)
         }
     }
 }
@@ -94,38 +106,77 @@ private class Hungry(val emoji: String, val happy: String, val wantEmoji: String
 
 private val HUNGRY = listOf(
     Hungry("🐰", "🥰", "🥕", "جزرة"),
-    Hungry("🐱", "😻", "🐟", "سمكة")
+    Hungry("🐱", "😻", "🐟", "سمكة"),
+    Hungry("🐶", "😍", "🦴", "عضمة"),
+    Hungry("🐵", "🤩", "🍌", "موزة")
 )
-private val FOODS = listOf("🥕" to "جزرة", "🐟" to "سمكة", "🍎" to "تفاحة", "🍌" to "موزة", "🥛" to "لبن", "🍞" to "عيش")
+private val FOODS = listOf(
+    "🥕" to "جزرة", "🐟" to "سمكة", "🦴" to "عضمة", "🍌" to "موزة",
+    "🍎" to "تفاحة", "🥛" to "لبن", "🍞" to "عيش"
+)
 
 @Composable
 fun FeedAnimal(vm: AppViewModel) {
-    var a by remember { mutableStateOf(HUNGRY.random()) }
+    var idx by remember { mutableStateOf(0) }
+    var round by remember { mutableStateOf(0) }
     var fed by remember { mutableStateOf(false) }
+    var oops by remember { mutableStateOf(false) }
     var win by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
-    val options = remember(a) { (listOf(a.wantEmoji to a.wantWord) + FOODS.filter { it.second != a.wantWord }.shuffled().take(2)).shuffled() }
-    LaunchedEffect(a) { vm.speech.speak("أنا جعان! عايز ${a.wantWord}", pitch = 1.5f) }
+    val a = HUNGRY[idx]
+    val options = remember(idx, round) {
+        (listOf(a.wantEmoji to a.wantWord) + FOODS.filter { it.second != a.wantWord }.shuffled().take(2)).shuffled()
+    }
+    LaunchedEffect(idx, round) { vm.speech.speak("أنا جعان! عايز ${a.wantWord}", pitch = 1.4f) }
+
+    fun nextAnimal() {
+        var n = idx
+        while (n == idx) n = HUNGRY.indices.random()
+        idx = n
+        round++
+    }
 
     fun feed(ok: Boolean, stars: Int) {
+        if (fed) return                       // ignore taps while the animal is eating
         if (ok) {
-            fed = true; win = stars; vm.addStars(stars); vm.speech.speak("نام نام! شكراً!", pitch = 1.6f)
-            scope.launch { delay(1800); fed = false; a = HUNGRY.random() }
-        } else vm.speech.speak("لأ، أنا عايز ${a.wantWord}", pitch = 1.5f)
+            fed = true; win = stars; vm.addStars(stars)
+            vm.speech.speak("نام نام! شكراً!", pitch = 1.5f)
+            scope.launch { delay(1800); fed = false; nextAnimal() }
+        } else {
+            oops = true
+            vm.speech.speak("لأ، أنا عايز ${a.wantWord}", pitch = 1.4f)
+            scope.launch { delay(900); oops = false }
+        }
     }
 
     Box(Modifier.fillMaxSize().background(Cream)) {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             TopBar("أطعم الحيوان", vm.stars) { vm.back() }
-            Bouncy(Modifier.weight(1f)) { Text(if (fed) a.happy else a.emoji, fontSize = 170.sp) }
-            Text("عايز ${a.wantWord}", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Ink)
-            Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                for ((e, w) in options) {
-                    BigCard(e, w, Peach, Modifier.weight(1f).height(130.dp), 56.sp) { feed(w == a.wantWord, 1) }
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Bouncy {
+                    Text(
+                        when {
+                            fed -> a.happy
+                            oops -> "😕"
+                            else -> a.emoji
+                        },
+                        fontSize = 120.sp
+                    )
                 }
             }
-            MicButton(vm, a.wantWord, Modifier.padding(bottom = 16.dp)) { s ->
-                if (s > 0) feed(true, s) else if (s == 0) vm.speech.speak("قول ${a.wantWord}", pitch = 1.4f)
+            Text("عايز ${a.wantWord}", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = Ink)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                for ((e, w) in options) {
+                    BigCard(e, w, Peach, Modifier.weight(1f).height(120.dp), 44.sp) { feed(w == a.wantWord, 1) }
+                }
+            }
+            MicButton(vm, a.wantWord, Modifier.padding(bottom = 12.dp)) { s ->
+                if (s > 0) feed(true, s)
+                else if (s == 0) vm.speech.speak("قول ${a.wantWord}", pitch = 1.3f)
+                else vm.speech.speak("ما سمعتكش، قول تاني", pitch = 1.3f)
             }
         }
         Celebrate(win) { win = 0 }
