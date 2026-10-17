@@ -2,6 +2,8 @@ package com.amrjudy.kids
 
 import android.os.Handler
 import android.os.Looper
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,20 +32,51 @@ fun MicButton(
     onScore: (Int) -> Unit
 ) {
     var listening by remember { mutableStateOf(false) }
+    var level by remember { mutableStateOf(0f) }
+    val handler = remember { Handler(Looper.getMainLooper()) }
+    val pulse by animateFloatAsState(1f + level * 0.35f, label = "micPulse")
+    val isAmr = vm.profile == Profile.AMR
+
+    fun finish(score: Int) { listening = false; level = 0f; onScore(score) }
+
+    // The phone's recogniser is missing / has no Arabic: just detect that the child made a sound.
+    fun soundFallback() {
+        Thread {
+            val ms = try { SoundDetector().listen(5) { l -> handler.post { level = l } } } catch (e: Exception) { -1 }
+            handler.post { finish(soundStars(ms)) }
+        }.start()
+    }
+
     BigCard(
         if (listening) "👂" else "🎤", "", if (listening) Pink else Mint,
-        modifier.size(96.dp), 44.sp
+        modifier.size(96.dp).scale(pulse), 44.sp
     ) {
         if (!listening) {
+            if (!vm.hasMic()) {
+                vm.askMic()
+                onScore(-1)
+            } else {
                 vm.speech.stopSpeaking()          // don't let the recogniser hear our own voice
-            listening = true
-            Handler(Looper.getMainLooper()).postDelayed({
-                vm.speech.listen(
-                    onResult = { listening = false; onScore(Fuzzy.score(target, it)) },
-                    onFail = { listening = false; onScore(-1) },
-                    lang = lang
-                )
-            }, 400)
+                listening = true
+                handler.postDelayed({
+                    vm.speech.listen(
+                        onResult = { heard ->
+                            val sc = Fuzzy.score(target, heard)
+                            // For a 3-year-old with delayed speech every attempt counts.
+                            finish(if (isAmr) maxOf(sc, 1) else sc)
+                        },
+                        onFail = { code ->
+                            when (code) {
+                                android.speech.SpeechRecognizer.ERROR_NO_MATCH -> finish(if (isAmr) 1 else 0)
+                                android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> finish(-1)
+                                else -> soundFallback()
+                            }
+                        },
+                        onRms = { db -> level = ((db + 2f) / 12f).coerceIn(0f, 1f) },
+                        lang = lang
+                    )
+                }, 400)
+            }
         }
     }
 }

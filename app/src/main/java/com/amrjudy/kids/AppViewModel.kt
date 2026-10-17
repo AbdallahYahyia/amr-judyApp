@@ -43,6 +43,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return true
     }
 
+    // ---- Microphone permission (the activity sets micRequest) ----
+    var micRequest: (() -> Unit)? = null
+
+    fun hasMic(): Boolean =
+        getApplication<Application>().checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /** Asks for the microphone permission (or opens the app settings if it was blocked). */
+    fun askMic() {
+        speech.speak("اسمح للميكروفون عشان أسمعك")
+        micRequest?.invoke()
+    }
+
     fun recordedKeys(): List<String> = prefs.getStringSet("voice_keys", emptySet())?.toList()?.sorted() ?: emptyList()
 
     fun chooseVoice(name: String) {

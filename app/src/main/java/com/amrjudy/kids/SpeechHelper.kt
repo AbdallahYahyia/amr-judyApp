@@ -18,6 +18,8 @@ import java.util.Locale
  * the system recogniser is free to use the (better) online engine automatically.
  * All calls must be made from the main thread.
  */
+const val ERR_UNAVAILABLE = -1
+
 class SpeechHelper(private val context: Context) {
 
     private var tts: TextToSpeech? = null
@@ -127,27 +129,39 @@ class SpeechHelper(private val context: Context) {
 
     fun recognitionAvailable(): Boolean = SpeechRecognizer.isRecognitionAvailable(context)
 
-    /** Listens once. onResult gets all candidate phrases; onFail is called on any error / silence. */
+    /**
+     * Listens once. onResult gets all candidate phrases.
+     * onFail gets the SpeechRecognizer error code: ERROR_NO_MATCH (7) = a sound was heard but not understood,
+     * ERROR_SPEECH_TIMEOUT (6) = nothing was heard, [ERR_UNAVAILABLE] = no recogniser on the phone, anything else = service problem.
+     */
     fun listen(
         onResult: (List<String>) -> Unit,
-        onFail: () -> Unit,
+        onFail: (Int) -> Unit,
         onRms: (Float) -> Unit = {},
         lang: String = "ar-EG"
     ) {
-        if (!recognitionAvailable()) { onFail(); return }
+        if (!recognitionAvailable()) { onFail(ERR_UNAVAILABLE); return }
         cancelListening()
-        val sr = SpeechRecognizer.createSpeechRecognizer(context)
+        val sr = try { SpeechRecognizer.createSpeechRecognizer(context) } catch (e: Exception) { null }
+        if (sr == null) { onFail(ERR_UNAVAILABLE); return }
         recognizer = sr
+        var finished = false
         sr.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {}
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) { onRms(rmsdB) }
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() {}
-            override fun onError(error: Int) { onFail() }
+            override fun onError(error: Int) {
+                if (finished) return
+                finished = true
+                onFail(error)
+            }
             override fun onResults(results: Bundle?) {
+                if (finished) return
+                finished = true
                 val list = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION) ?: arrayListOf()
-                if (list.isEmpty()) onFail() else onResult(list)
+                if (list.isEmpty()) onFail(SpeechRecognizer.ERROR_NO_MATCH) else onResult(list)
             }
             override fun onPartialResults(partialResults: Bundle?) {}
             override fun onEvent(eventType: Int, params: Bundle?) {}
@@ -157,7 +171,9 @@ class SpeechHelper(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 8)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+            // Small children pause a lot: wait longer before deciding they have finished.
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1800L)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
         }
         sr.startListening(intent)
     }

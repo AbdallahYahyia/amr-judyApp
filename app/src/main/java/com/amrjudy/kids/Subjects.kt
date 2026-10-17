@@ -250,9 +250,8 @@ private fun AlphabetExplorer(vm: AppViewModel) {
     }
 }
 
-/* ================================ Math ================================ */
 
-fun ar(n: Int): String = n.toString().map { '٠' + (it - '0') }.joinToString("")
+/* ====================== Math (in English, like Judy's school) ====================== */
 
 private fun numChoices(ans: Int, lo: Int, hi: Int): List<String> {
     val s = linkedSetOf(ans)
@@ -264,30 +263,38 @@ private fun numChoices(ans: Int, lo: Int, hi: Int): List<String> {
     }
     var v = lo
     while (s.size < 4 && v <= hi) { s.add(v); v++ }
-    return s.shuffled().map { ar(it) }
+    return s.shuffled().map { it.toString() }
 }
+
+private val NUM_WORDS = listOf(
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+    "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"
+)
 
 private fun addQ(): MQ {
     val a = (0..10).random(); val b = (0..10).random(); val ans = a + b
     val glyph = if (ans in 1..10) "🍎".repeat(a) + "  ➕  " + "🍏".repeat(b) else ""
-    return MQ(glyph, "${ar(a)} + ${ar(b)} = ؟", "$a زائد $b يساوي كام؟", numChoices(ans, 0, 20), ar(ans))
+    return MQ(glyph, "$a + $b = ?", "$a plus $b equals what?", numChoices(ans, 0, 20), ans.toString())
 }
 
 private fun subQ(): MQ {
     val a = (1..20).random(); val b = (0..a).random(); val ans = a - b
     val glyph = if (a <= 10) "🍎".repeat(a) else ""
-    return MQ(glyph, "${ar(a)} − ${ar(b)} = ؟", "$a ناقص $b يساوي كام؟", numChoices(ans, 0, 20), ar(ans))
+    return MQ(glyph, "$a − $b = ?", "$a minus $b equals what?", numChoices(ans, 0, 20), ans.toString())
 }
 
-private const val BIGGER = "أكبر من  >"
-private const val SMALLER = "أصغر من  <"
-private const val EQUAL = "يساوي  ="
+private const val BIGGER = "greater than  >"
+private const val SMALLER = "less than  <"
+private const val EQUAL = "equal to  ="
 
 private fun compareQ(): MQ {
     val a = (0..99).random()
     val b = if ((0..6).random() == 0) a else (0..99).random()
     val ans = when { a > b -> BIGGER; a < b -> SMALLER; else -> EQUAL }
-    return MQ("", "${ar(a)}   ؟   ${ar(b)}", "$a و $b. أكبر ولا أصغر ولا يساوي؟", listOf(BIGGER, SMALLER, EQUAL), ans)
+    return MQ(
+        "", "$a   ?   $b", "$a and $b. Is $a greater than, less than, or equal to $b?",
+        listOf(BIGGER, SMALLER, EQUAL), ans
+    )
 }
 
 private fun missingQ(): MQ {
@@ -296,148 +303,277 @@ private fun missingQ(): MQ {
     val seq = List(4) { start + step * it }
     val hide = (1..3).random()
     val ans = seq[hide]
-    val shown = seq.mapIndexed { i, v -> if (i == hide) "؟" else ar(v) }.joinToString("،  ")
-    return MQ("", shown, "إيه الرقم الناقص؟", numChoices(ans, 0, 120), ar(ans))
+    val shown = seq.mapIndexed { i, v -> if (i == hide) "?" else v.toString() }.joinToString(",  ")
+    return MQ("", shown, "What is the missing number?", numChoices(ans, 0, 120), ans.toString())
+}
+
+private fun beforeAfterQ(): MQ = when ((0..2).random()) {
+    0 -> {
+        val n = (0..98).random()
+        MQ("", "What comes after $n?", "What number comes after $n?", numChoices(n + 1, 0, 100), (n + 1).toString())
+    }
+    1 -> {
+        val n = (2..100).random()
+        MQ("", "What comes before $n?", "What number comes before $n?", numChoices(n - 1, 0, 100), (n - 1).toString())
+    }
+    else -> {
+        val n = (0..98).random()
+        MQ("", "$n,  ?,  ${n + 2}", "What number comes between $n and ${n + 2}?", numChoices(n + 1, 0, 100), (n + 1).toString())
+    }
 }
 
 private fun placeQ(): MQ {
     val n = (11..99).random()
     return if ((0..1).random() == 0) {
-        MQ("🔟", "العدد ${ar(n)} فيه كام عشرة؟", "العدد $n فيه كام عشرة؟", numChoices(n / 10, 1, 9), ar(n / 10))
+        MQ("🔟", "How many tens are in $n?", "How many tens are in $n?", numChoices(n / 10, 1, 9), (n / 10).toString())
     } else {
-        MQ("1️⃣", "العدد ${ar(n)} فيه كام آحاد؟", "العدد $n فيه كام آحاد؟", numChoices(n % 10, 0, 9), ar(n % 10))
+        MQ("1️⃣", "How many ones are in $n?", "How many ones are in $n?", numChoices(n % 10, 0, 9), (n % 10).toString())
     }
 }
 
-private val THINGS = listOf("بالونات" to "🎈", "تفاحات" to "🍎", "كور" to "⚽", "ورود" to "🌹", "بسكوتات" to "🍪")
+private fun make10Q(): MQ {
+    val a = (0..10).random()
+    return MQ(
+        "🔟", "$a + ? = 10", "$a plus what equals ten?",
+        numChoices(10 - a, 0, 10), (10 - a).toString()
+    )
+}
+
+private val THINGS = listOf("balloons" to "🎈", "apples" to "🍎", "balls" to "⚽", "roses" to "🌹", "cookies" to "🍪")
 
 private fun wordQ(): MQ {
     val (word, emoji) = THINGS.random()
     return if ((0..1).random() == 0) {
         val a = (1..10).random(); val b = (1..10).random()
-        MQ(emoji, "مع جودي ${ar(a)} $word، وجابت ${ar(b)} كمان. بقى معاها كام؟",
-            "مع جودي $a $word، وجابت $b كمان. بقى معاها كام؟", numChoices(a + b, 0, 20), ar(a + b))
+        val t = "Judy has $a $word and gets $b more. How many does she have now?"
+        MQ(emoji, t, t, numChoices(a + b, 0, 20), (a + b).toString())
     } else {
         val a = (2..15).random(); val b = (1..a).random()
-        MQ(emoji, "مع جودي ${ar(a)} $word، وادّت صاحبتها ${ar(b)}. فضل معاها كام؟",
-            "مع جودي $a $word، وادّت صاحبتها $b. فضل معاها كام؟", numChoices(a - b, 0, 20), ar(a - b))
+        val t = "Judy has $a $word and gives $b away. How many are left?"
+        MQ(emoji, t, t, numChoices(a - b, 0, 20), (a - b).toString())
     }
 }
 
 private val CLOCKS = listOf("🕐", "🕑", "🕒", "🕓", "🕔", "🕕", "🕖", "🕗", "🕘", "🕙", "🕚", "🕛")
+private val HALF_CLOCKS = listOf("🕜", "🕝", "🕞", "🕟", "🕠", "🕡", "🕢", "🕣", "🕤", "🕥", "🕦", "🕧")
+
+private fun clockLabel(h: Int, half: Boolean) = if (half) "half past $h" else "$h o'clock"
 
 private fun clockQ(): MQ {
+    val half = (0..1).random() == 1
     val h = (1..12).random()
-    return MQ(CLOCKS[h - 1], "الساعة كام؟", "الساعة كام؟", numChoices(h, 1, 12), ar(h))
+    val ans = clockLabel(h, half)
+    val others = (1..12).filter { it != h }.shuffled().take(3).map { clockLabel(it, half) }
+    return MQ(if (half) HALF_CLOCKS[h - 1] else CLOCKS[h - 1], "What time is it?", "What time is it?", (others + ans).shuffled(), ans)
+}
+
+private fun numberWordsQ(): MQ {
+    val n = (0..20).random()
+    return if ((0..1).random() == 0) {
+        MQ("", "Which number is \"${NUM_WORDS[n]}\"?", "Which number is ${NUM_WORDS[n]}?", numChoices(n, 0, 20), n.toString())
+    } else {
+        MQ(
+            "", "$n", "How do we write this number in words?",
+            numChoices(n, 0, 20).map { NUM_WORDS[it.toInt()] }, NUM_WORDS[n]
+        )
+    }
+}
+
+private val COUNT_THINGS = listOf("🍎", "⭐", "🐟", "🎈", "🚗", "🌸", "🐥")
+
+private fun countQ(): MQ {
+    val n = (1..20).random()
+    return MQ(COUNT_THINGS.random().repeat(n), "How many?", "How many are there?", numChoices(n, 1, 20), n.toString())
+}
+
+private val SHAPES = listOf(
+    "🔵" to "circle", "🟩" to "square", "🔺" to "triangle", "⭐" to "star", "❤️" to "heart", "🔶" to "diamond"
+)
+
+private fun shapeQ(): MQ {
+    val s = SHAPES.random()
+    return MQ(
+        s.first, "What shape is this?", "What shape is this?",
+        (listOf(s.second) + SHAPES.filter { it !== s }.shuffled().take(3).map { it.second }).shuffled(), s.second
+    )
 }
 
 @Composable
 fun MathHub(vm: AppViewModel) {
     Hub(
-        vm, "حساب",
+        vm, "Math",
         listOf(
-            HubCard("➕", "جمع", Sky) { QuizRunner(vm, glyphSize = 28) { addQ() } },
-            HubCard("➖", "طرح", Peach) { QuizRunner(vm, glyphSize = 28) { subQ() } },
-            HubCard("⚖️", "أكبر وأصغر", Mint) { QuizRunner(vm) { compareQ() } },
-            HubCard("🔢", "الرقم الناقص", Sun) { QuizRunner(vm) { missingQ() } },
-            HubCard("🔟", "عشرات وآحاد", Lilac) { QuizRunner(vm, glyphSize = 60) { placeQ() } },
-            HubCard("📖", "مسائل", Pink) { QuizRunner(vm, glyphSize = 60) { wordQ() } },
-            HubCard("🕒", "الساعة", Sky) { QuizRunner(vm, glyphSize = 100) { clockQ() } }
+            HubCard("➕", "Addition", Sky) { QuizRunner(vm, en = true, glyphSize = 28) { addQ() } },
+            HubCard("➖", "Subtraction", Peach) { QuizRunner(vm, en = true, glyphSize = 28) { subQ() } },
+            HubCard("⚖️", "Greater / Less", Mint) { QuizRunner(vm, en = true) { compareQ() } },
+            HubCard("🔢", "Missing Number", Sun) { QuizRunner(vm, en = true) { missingQ() } },
+            HubCard("↔️", "Before & After", Pink) { QuizRunner(vm, en = true) { beforeAfterQ() } },
+            HubCard("🔟", "Tens & Ones", Lilac) { QuizRunner(vm, en = true, glyphSize = 60) { placeQ() } },
+            HubCard("🎯", "Make 10", Sky) { QuizRunner(vm, en = true, glyphSize = 60) { make10Q() } },
+            HubCard("📖", "Word Problems", Pink) { QuizRunner(vm, en = true, glyphSize = 60) { wordQ() } },
+            HubCard("🕒", "Clock", Mint) { QuizRunner(vm, en = true, glyphSize = 100) { clockQ() } },
+            HubCard("🔺", "Shapes", Peach) { QuizRunner(vm, en = true, glyphSize = 100) { shapeQ() } },
+            HubCard("🔤", "Number Words", Sun) { QuizRunner(vm, en = true) { numberWordsQ() } },
+            HubCard("🧮", "Counting", Lilac) { QuizRunner(vm, en = true, glyphSize = 30) { countQ() } }
         )
     )
 }
 
-/* ============================== Science ============================== */
+/* ====================== Science (in English, like Judy's school) ====================== */
 
 @Composable
 fun ScienceHub(vm: AppViewModel) {
     Hub(
-        vm, "علوم",
+        vm, "Science",
         listOf(
-            HubCard("👀", "الحواس", Sky) {
+            HubCard("👀", "Five Senses", Sky) {
                 MapQuiz(
                     vm,
                     listOf(
-                        MapItem("📖", "بنشوف بإيه؟", "العين 👁️"),
-                        MapItem("🎵", "بنسمع بإيه؟", "الودن 👂"),
-                        MapItem("🌹", "بنشم بإيه؟", "الأنف 👃"),
-                        MapItem("🍭", "بنحس بالطعم بإيه؟", "اللسان 👅"),
-                        MapItem("🧸", "بنلمس بإيه؟", "الإيد ✋")
+                        MapItem("📖", "What do we see with?", "eyes 👁️"),
+                        MapItem("🎵", "What do we hear with?", "ears 👂"),
+                        MapItem("🌹", "What do we smell with?", "nose 👃"),
+                        MapItem("🍭", "What do we taste with?", "tongue 👅"),
+                        MapItem("🧸", "What do we touch with?", "hands ✋")
                     ),
-                    listOf("العين 👁️", "الودن 👂", "الأنف 👃", "اللسان 👅", "الإيد ✋")
+                    listOf("eyes 👁️", "ears 👂", "nose 👃", "tongue 👅", "hands ✋"), en = true
                 )
             },
-            HubCard("🌱", "حي ولا لأ؟", Mint) {
-                val alive = "حي 🌱"; val notAlive = "مش حي 🪨"
+            HubCard("🌱", "Living or Not", Mint) {
+                val alive = "living 🌱"; val notAlive = "non-living 🪨"
                 MapQuiz(
                     vm,
                     listOf(
-                        MapItem("🐱", "القطة حي ولا مش حي؟", alive), MapItem("🌳", "الشجرة حي ولا مش حي؟", alive),
-                        MapItem("🪨", "الحجر حي ولا مش حي؟", notAlive), MapItem("🚗", "العربية حي ولا مش حي؟", notAlive),
-                        MapItem("🐟", "السمكة حي ولا مش حي؟", alive), MapItem("⚽", "الكورة حي ولا مش حي؟", notAlive),
-                        MapItem("🌻", "الوردة حي ولا مش حي؟", alive), MapItem("📚", "الكتاب حي ولا مش حي؟", notAlive)
+                        MapItem("🐱", "Is a cat living or non-living?", alive), MapItem("🌳", "Is a tree living or non-living?", alive),
+                        MapItem("🪨", "Is a rock living or non-living?", notAlive), MapItem("🚗", "Is a car living or non-living?", notAlive),
+                        MapItem("🐟", "Is a fish living or non-living?", alive), MapItem("⚽", "Is a ball living or non-living?", notAlive),
+                        MapItem("🌻", "Is a flower living or non-living?", alive), MapItem("📚", "Is a book living or non-living?", notAlive)
                     ),
-                    listOf(alive, notAlive)
+                    listOf(alive, notAlive), en = true
                 )
             },
-            HubCard("🌊", "بيعيش فين؟", Peach) {
-                val sea = "البحر 🌊"; val forest = "الغابة 🌳"; val farm = "المزرعة 🏡"; val desert = "الصحراء 🏜️"
+            HubCard("🌊", "Where Do They Live?", Peach) {
+                val sea = "sea 🌊"; val forest = "forest 🌳"; val farm = "farm 🏡"; val desert = "desert 🏜️"
                 MapQuiz(
                     vm,
                     listOf(
-                        MapItem("🐟", "السمكة بتعيش فين؟", sea), MapItem("🐙", "الأخطبوط بيعيش فين؟", sea),
-                        MapItem("🐘", "الفيل بيعيش فين؟", forest), MapItem("🦁", "الأسد بيعيش فين؟", forest),
-                        MapItem("🐮", "البقرة بتعيش فين؟", farm), MapItem("🐔", "الفرخة بتعيش فين؟", farm),
-                        MapItem("🐪", "الجمل بيعيش فين؟", desert)
+                        MapItem("🐟", "Where does a fish live?", sea), MapItem("🐙", "Where does an octopus live?", sea),
+                        MapItem("🐘", "Where does an elephant live?", forest), MapItem("🦁", "Where does a lion live?", forest),
+                        MapItem("🐮", "Where does a cow live?", farm), MapItem("🐔", "Where does a hen live?", farm),
+                        MapItem("🐪", "Where does a camel live?", desert)
                     ),
-                    listOf(sea, forest, farm, desert)
+                    listOf(sea, forest, farm, desert), en = true
                 )
             },
-            HubCard("💧", "النبات محتاج؟", Lilac) {
-                val yes = "آه ✅"; val no = "لأ ❌"
+            HubCard("🌿", "Parts of a Plant", Lilac) {
+                val root = "roots"; val stem = "stem"; val leaf = "leaves"; val flower = "flower"
                 MapQuiz(
                     vm,
                     listOf(
-                        MapItem("💧", "النبات محتاج مية؟", yes), MapItem("☀️", "النبات محتاج شمس؟", yes),
-                        MapItem("🌬️", "النبات محتاج هوا؟", yes), MapItem("🍫", "النبات محتاج شوكولاتة؟", no),
-                        MapItem("🪨", "النبات بياكل حجر؟", no)
+                        MapItem("🌱", "Which part takes water from the soil?", root),
+                        MapItem("🌿", "Which part holds the plant up?", stem),
+                        MapItem("🍃", "Which part makes food from sunlight?", leaf),
+                        MapItem("🌸", "Which part makes the seeds and fruit?", flower)
                     ),
-                    listOf(yes, no)
+                    listOf(root, stem, leaf, flower), en = true
                 )
             },
-            HubCard("🍂", "الفصول", Pink) {
+            HubCard("💧", "Plants Need", Pink) {
+                val yes = "yes ✅"; val no = "no ❌"
                 MapQuiz(
                     vm,
                     listOf(
-                        MapItem("🏖️", "ده فصل إيه؟", "الصيف"), MapItem("⛄", "ده فصل إيه؟", "الشتا"),
-                        MapItem("🌸", "ده فصل إيه؟", "الربيع"), MapItem("🍂", "ده فصل إيه؟", "الخريف")
+                        MapItem("💧", "Do plants need water?", yes), MapItem("☀️", "Do plants need sunlight?", yes),
+                        MapItem("🌬️", "Do plants need air?", yes), MapItem("🍫", "Do plants need chocolate?", no),
+                        MapItem("🪨", "Do plants eat rocks?", no)
                     ),
-                    listOf("الصيف", "الشتا", "الربيع", "الخريف")
+                    listOf(yes, no), en = true
                 )
             },
-            HubCard("🥦", "أكل صحي", Mint) {
-                val good = "صحي 💪"; val bad = "مش صحي 🍬"
+            HubCard("🌦️", "Weather", Sky) {
+                val sunny = "sunny"; val rainy = "rainy"; val cloudy = "cloudy"; val windy = "windy"; val snowy = "snowy"; val stormy = "stormy"
                 MapQuiz(
                     vm,
                     listOf(
-                        MapItem("🍎", "التفاحة صحي ولا مش صحي؟", good), MapItem("🥕", "الجزر صحي ولا مش صحي؟", good),
-                        MapItem("🍭", "اللوليبوب صحي ولا مش صحي؟", bad), MapItem("🥛", "اللبن صحي ولا مش صحي؟", good),
-                        MapItem("🍟", "الشيبسي صحي ولا مش صحي؟", bad), MapItem("🥦", "البروكلي صحي ولا مش صحي؟", good),
-                        MapItem("🥤", "المشروب الغازي صحي ولا مش صحي؟", bad)
+                        MapItem("☀️", "What is the weather?", sunny), MapItem("🌧️", "What is the weather?", rainy),
+                        MapItem("☁️", "What is the weather?", cloudy), MapItem("🌬️", "What is the weather?", windy),
+                        MapItem("❄️", "What is the weather?", snowy), MapItem("⛈️", "What is the weather?", stormy)
                     ),
-                    listOf(good, bad)
+                    listOf(sunny, rainy, cloudy, windy, snowy, stormy), en = true
                 )
             },
-            HubCard("🌗", "نهار وليل", Sky) {
-                val day = "نهار ☀️"; val night = "ليل 🌙"
+            HubCard("🍂", "Seasons", Peach) {
                 MapQuiz(
                     vm,
                     listOf(
-                        MapItem("☀️", "الشمس بتطلع في النهار ولا الليل؟", day), MapItem("🌙", "القمر بيظهر في النهار ولا الليل؟", night),
-                        MapItem("⭐", "النجوم بتظهر في النهار ولا الليل؟", night), MapItem("🛏️", "بننام في النهار ولا الليل؟", night),
-                        MapItem("🏫", "بنروح المدرسة في النهار ولا الليل؟", day)
+                        MapItem("🏖️", "Which season is this?", "summer"), MapItem("⛄", "Which season is this?", "winter"),
+                        MapItem("🌸", "Which season is this?", "spring"), MapItem("🍂", "Which season is this?", "autumn")
                     ),
-                    listOf(day, night)
+                    listOf("summer", "winter", "spring", "autumn"), en = true
+                )
+            },
+            HubCard("🥦", "Healthy Food", Mint) {
+                val good = "healthy 💪"; val bad = "unhealthy 🍬"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("🍎", "Is an apple healthy or unhealthy?", good), MapItem("🥕", "Is a carrot healthy or unhealthy?", good),
+                        MapItem("🍭", "Is a lollipop healthy or unhealthy?", bad), MapItem("🥛", "Is milk healthy or unhealthy?", good),
+                        MapItem("🍟", "Are chips healthy or unhealthy?", bad), MapItem("🥦", "Is broccoli healthy or unhealthy?", good),
+                        MapItem("🥤", "Is soda healthy or unhealthy?", bad)
+                    ),
+                    listOf(good, bad), en = true
+                )
+            },
+            HubCard("🌗", "Day & Night", Lilac) {
+                val day = "day ☀️"; val night = "night 🌙"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("☀️", "Does the sun shine in the day or at night?", day),
+                        MapItem("🌙", "Do we see the moon in the day or at night?", night),
+                        MapItem("⭐", "Do we see the stars in the day or at night?", night),
+                        MapItem("🛏️", "Do we sleep in the day or at night?", night),
+                        MapItem("🏫", "Do we go to school in the day or at night?", day)
+                    ),
+                    listOf(day, night), en = true
+                )
+            },
+            HubCard("🐣", "Animal Babies", Pink) {
+                val calf = "calf"; val chick = "chick"; val puppy = "puppy"; val kitten = "kitten"; val lamb = "lamb"; val duckling = "duckling"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("🐮", "What is a baby cow called?", calf), MapItem("🐔", "What is a baby hen called?", chick),
+                        MapItem("🐶", "What is a baby dog called?", puppy), MapItem("🐱", "What is a baby cat called?", kitten),
+                        MapItem("🐑", "What is a baby sheep called?", lamb), MapItem("🦆", "What is a baby duck called?", duckling)
+                    ),
+                    listOf(calf, chick, puppy, kitten, lamb, duckling), en = true
+                )
+            },
+            HubCard("🧱", "Hard or Soft", Sun) {
+                val hard = "hard 🪨"; val soft = "soft ☁️"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("🛏️", "Is a pillow hard or soft?", soft), MapItem("🪨", "Is a rock hard or soft?", hard),
+                        MapItem("🧸", "Is a teddy bear hard or soft?", soft), MapItem("🪵", "Is wood hard or soft?", hard),
+                        MapItem("🧶", "Is wool hard or soft?", soft), MapItem("🪟", "Is glass hard or soft?", hard)
+                    ),
+                    listOf(hard, soft), en = true
+                )
+            },
+            HubCard("🦅", "How Animals Move", Mint) {
+                val fly = "fly"; val swim = "swim"; val walk = "walk"; val crawl = "crawl"
+                MapQuiz(
+                    vm,
+                    listOf(
+                        MapItem("🦅", "How does a bird move?", fly), MapItem("🦋", "How does a butterfly move?", fly),
+                        MapItem("🐟", "How does a fish move?", swim), MapItem("🐬", "How does a dolphin move?", swim),
+                        MapItem("🐶", "How does a dog move?", walk), MapItem("🐘", "How does an elephant move?", walk),
+                        MapItem("🐍", "How does a snake move?", crawl), MapItem("🐛", "How does a caterpillar move?", crawl)
+                    ),
+                    listOf(fly, swim, walk, crawl), en = true
                 )
             }
         )

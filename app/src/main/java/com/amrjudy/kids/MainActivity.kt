@@ -1,10 +1,12 @@
 package com.amrjudy.kids
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -27,15 +29,36 @@ import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
+    private var micBlocked = false
+
+    private val micLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        // Denied twice ("don't ask again"): the system dialog will not appear any more.
+        if (!granted && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) micBlocked = true
+    }
+
+    private fun openAppSettings() {
+        try {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+            )
+        } catch (e: Exception) { }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        vm.micRequest = {
+            if (micBlocked) openAppSettings() else micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
         setContent {
-            val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-            LaunchedEffect(Unit) { permission.launch(Manifest.permission.RECORD_AUDIO) }
+            LaunchedEffect(Unit) { if (!vm.hasMic()) micLauncher.launch(Manifest.permission.RECORD_AUDIO) }
             BackHandler { vm.back() }
             AppRoot(vm)
         }
+    }
+
+    override fun onDestroy() {
+        vm.micRequest = null
+        super.onDestroy()
     }
 }
 
@@ -120,8 +143,8 @@ fun MenuScreen(vm: AppViewModel) {
         } else {
             add(MenuItem("📖", "لغتي", Pink, "arabic"))
             add(MenuItem("🔤", "English", Sky, "english"))
-            add(MenuItem("➕", "حساب", Mint, "math"))
-            add(MenuItem("🔬", "علوم", Peach, "science"))
+            add(MenuItem("➕", "Math", Mint, "math"))
+            add(MenuItem("🔬", "Science", Peach, "science"))
             add(MenuItem("♞", "أكاديمية الشطرنج", Lilac, "chess"))
             add(MenuItem("🐻", "دبدوب", Pink, "buddy"))
             add(MenuItem("🎨", "ألوان وأشكال", Pink, "colors"))

@@ -58,6 +58,7 @@ private fun TurnTaking(vm: AppViewModel) {
     var phase by remember { mutableStateOf("bear") }
     var msg by remember { mutableStateOf("") }
     var win by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(round, phase) {
         if (round >= sounds.size) {
@@ -94,8 +95,11 @@ private fun TurnTaking(vm: AppViewModel) {
                 if (phase == "you") {
                     SoundMicButton(vm) { s ->
                         if (s < 0) msg = "الميكروفون مش شغال، اسمح له من إعدادات التطبيق"
-                        else if (s > 0) { win = reward(vm, s); round++; phase = "bear" }
-                        else { msg = "جرّب تاني بصوت أعلى"; vm.speech.speak("جرّب تاني") }
+                        else if (s > 0) {
+                            win = reward(vm, s); msg = "برافو! 👏"
+                            // let the cheer finish before the bear's next turn
+                            scope.launch { delay(2000); round++; phase = "bear" }
+                        } else { msg = "جرّب تاني بصوت أعلى"; vm.speech.speak("جرّب تاني") }
                     }
                     Spacer(Modifier.height(10.dp))
                     BigCard("⏭️", "", Peach, Modifier.size(64.dp), 26.sp) { round++; phase = "bear" }
@@ -152,7 +156,8 @@ private fun Requesting(vm: AppViewModel) {
                 if (listening) "👂" else "🎤", if (listening) "اتكلم!" else "قول اسمها",
                 if (listening) Pink else Mint, Modifier.size(width = 200.dp, height = 110.dp), 36.sp
             ) {
-                if (!listening && got == null) {
+                if (!listening && got == null && !vm.hasMic()) vm.askMic()
+                else if (!listening && got == null) {
                     vm.speech.stopSpeaking()
                     listening = true
                     Handler(Looper.getMainLooper()).postDelayed({
@@ -164,7 +169,17 @@ private fun Requesting(vm: AppViewModel) {
                                 if (maxOf(sa, sb) == 0) vm.speech.speak("قول اسمها", pitch = 1.3f)
                                 else give(if (sa >= sb) pair[0] else pair[1], 1 + maxOf(sa, sb))
                             },
-                            onFail = { listening = false; vm.speech.speak("ما سمعتكش، قول تاني", pitch = 1.3f) }
+                            onFail = { code ->
+                                listening = false
+                                vm.speech.speak(
+                                    when (code) {
+                                        android.speech.SpeechRecognizer.ERROR_NO_MATCH -> "حلو! اختار اللي عايزه من الصور"
+                                        android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "ما سمعتكش، قول تاني"
+                                        else -> "اضغط على الصورة اللي عايزها"
+                                    },
+                                    pitch = 1.3f
+                                )
+                            }
                         )
                     }, 500)
                 }

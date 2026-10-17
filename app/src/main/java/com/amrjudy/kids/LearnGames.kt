@@ -298,6 +298,7 @@ fun Buddy(vm: AppViewModel) {
     // Starts the recogniser after the bear has stopped talking so it doesn't hear itself.
     fun listenNow(target: String?) {
         if (listening) return
+        if (!vm.hasMic()) { vm.askMic(); return }
         vm.speech.stopSpeaking()
         listening = true
         vm.refreshOnline()
@@ -318,7 +319,14 @@ fun Buddy(vm: AppViewModel) {
                         say(buddyReply(l.first(), kid) ?: "حلو أوي يا $kid! قول تاني")
                     }
                 },
-                onFail = { listening = false; say("ما سمعتكش، قول تاني") }
+                onFail = { code ->
+                    listening = false
+                    say(
+                        if (code == android.speech.SpeechRecognizer.ERROR_NO_MATCH || code == android.speech.SpeechRecognizer.ERROR_SPEECH_TIMEOUT)
+                            "ما سمعتكش، قول تاني"
+                        else "التعرف على الكلام مش شغال هنا. اضغط على الصور بدل ما تتكلم"
+                    )
+                }
             )
         }, 500)
     }
