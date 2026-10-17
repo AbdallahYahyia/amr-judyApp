@@ -1,10 +1,14 @@
 package com.amrjudy.kids
 
 import android.graphics.BitmapFactory
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -253,53 +257,130 @@ fun AnimalSounds(vm: AppViewModel) {
 
 /* ---------------- Feature 9: Buddy mascot ---------------- */
 
-private fun buddyReply(said: String, name: String): String {
+private fun buddyReply(said: String, name: String): String? {
     val s = Fuzzy.normalize(said)
+    fun has(vararg w: String) = w.any { it in s }
     return when {
-        "اسمك" in s || "انت مين" in s -> "أنا دبدوب صاحبك!"
-        "سلام" in s || "مرحبا" in s || "اهلا" in s || "هاي" in s -> "أهلاً يا $name! نورتني"
-        "ماما" in s -> "ماما بتحبك أوي"
-        "بابا" in s -> "بابا بيحبك أوي"
-        "جعان" in s || "اكل" in s -> "يلا ناكل حاجة حلوة! تفاحة؟"
-        "عطشان" in s || "مية" in s -> "هات كوباية مية يا $name"
-        "نام" in s -> "تصبح على خير يا $name"
-        "بحبك" in s -> "وأنا كمان بحبك يا $name"
-        "قطة" in s -> "مياو مياو! القطة بتقول مياو"
-        else -> "قولت: $said. برافو عليك يا $name!"
+        has("اسمك", "انت مين") -> "أنا دبدوب صاحبك!"
+        has("سلام", "مرحبا", "اهلا", "هاي", "صباح", "مساء") -> "أهلاً يا $name! نورتني"
+        has("ماما") -> "ماما بتحبك أوي"
+        has("بابا") -> "بابا بيحبك أوي"
+        has("جعان", "اكل") -> "يلا ناكل حاجة حلوة! تفاحة؟"
+        has("عطشان", "مية", "ميه") -> "هات كوباية مية يا $name"
+        has("نام", "نعسان") -> "تصبح على خير يا $name"
+        has("بحبك") -> "وأنا كمان بحبك يا $name"
+        has("قطة", "مياو") -> "مياو مياو! القطة بتقول مياو"
+        has("كلب", "هو هو") -> "هو هو! الكلب بيقول هو هو"
+        has("شكرا") -> "العفو يا $name"
+        else -> null
     }
 }
+
+private val BUDDY_QUIZ = listOf(
+    "🍎" to "تفاحة", "⚽" to "كورة", "🐱" to "قطة", "🚗" to "عربية",
+    "🍌" to "موزة", "🏠" to "بيت", "🐶" to "كلب", "🌙" to "قمر"
+)
 
 @Composable
 fun Buddy(vm: AppViewModel) {
     val kid = vm.profile?.nameAr ?: "حبيبي"
-    var reply by remember { mutableStateOf("أهلاً يا $kid! اضغط على الميكروفون وكلمني") }
+    var reply by remember { mutableStateOf("أهلاً يا $kid! اختار حاجة أو اضغط الميكروفون وكلمني") }
+    var heard by remember { mutableStateOf("") }
     var listening by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { vm.speech.speak("أهلاً يا $kid! أنا دبدوب", pitch = 1.5f) }
-    Column(Modifier.fillMaxSize().background(Cream), horizontalAlignment = Alignment.CenterHorizontally) {
-        TopBar("دبدوب صاحبك", vm.stars) { vm.back() }
-        Text(
-            if (vm.online) "🌐 متصل بالإنترنت" else "📴 بدون إنترنت (شغّال عادي)",
-            fontSize = 14.sp, color = Ink
-        )
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            Bouncy { Text(if (listening) "🐻‍❄️" else "🐻", fontSize = 150.sp) }
-        }
-        Text(reply, fontSize = 24.sp, color = Ink, textAlign = TextAlign.Center, modifier = Modifier.padding(16.dp))
-        BigCard(if (listening) "👂" else "🎤", "كلّمني", if (listening) Pink else Mint, Modifier.fillMaxWidth(0.8f).height(120.dp).padding(bottom = 16.dp), 44.sp) {
-            if (!listening) {
-                listening = true
-                vm.refreshOnline()
-                vm.speech.listen(
-                    onResult = { l ->
-                        listening = false
-                        reply = buddyReply(l.first(), kid)
-                        vm.speech.speak(reply, pitch = 1.5f)
+    var quiz by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var win by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
+
+    fun say(text: String) { reply = text; vm.speech.speak(text, pitch = 1.4f) }
+
+    LaunchedEffect(Unit) { vm.speech.speak("أهلاً يا $kid! أنا دبدوب", pitch = 1.4f) }
+
+    // Starts the recogniser after the bear has stopped talking so it doesn't hear itself.
+    fun listenNow(target: String?) {
+        if (listening) return
+        vm.speech.stopSpeaking()
+        listening = true
+        vm.refreshOnline()
+        Handler(Looper.getMainLooper()).postDelayed({
+            vm.speech.listen(
+                onResult = { l ->
+                    listening = false
+                    heard = l.first()
+                    val q = quiz
+                    if (target != null && q != null) {
+                        val sc = Fuzzy.score(target, l)
+                        if (sc > 0) {
+                            win = reward(vm, sc); reply = "برافو! ${q.second} 👏"
+                            scope.launch { delay(1800); win = 0; quiz = null }
+                        } else say("قول ${q.second}")
+                    } else {
                         vm.addStars(1)
-                    },
-                    onFail = { listening = false; reply = "ما سمعتكش، قول تاني"; vm.speech.speak(reply, pitch = 1.5f) }
-                )
+                        say(buddyReply(l.first(), kid) ?: "حلو أوي يا $kid! قول تاني")
+                    }
+                },
+                onFail = { listening = false; say("ما سمعتكش، قول تاني") }
+            )
+        }, 500)
+    }
+
+    Box(Modifier.fillMaxSize().background(Cream)) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            TopBar("دبدوب صاحبك", vm.stars) { vm.back() }
+            Text(
+                if (vm.online) "🌐 متصل بالإنترنت" else "📴 بدون إنترنت (شغّال عادي)",
+                fontSize = 14.sp, color = Ink
+            )
+            Bouncy(Modifier.padding(8.dp)) { Text(if (listening) "👂" else "🐻", fontSize = 110.sp) }
+            val q = quiz
+            if (q != null) Text(q.first, fontSize = 80.sp)
+            Text(
+                reply, fontSize = 22.sp, color = Ink, textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            if (heard.isNotEmpty()) Text("سمعتك بتقول: $heard", fontSize = 13.sp, color = Ink)
+            Spacer(Modifier.height(6.dp))
+            val topics = listOf(
+                "👋" to "سلام", "🍎" to "جعان", "😴" to "نعسان",
+                "🐱" to "قطة", "🎵" to "غنّي", "❓" to "سؤال"
+            )
+            for (row in topics.chunked(3)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    for ((e, label) in row) {
+                        BigCard(e, label, Peach, Modifier.weight(1f).height(96.dp), 34.sp) {
+                            quiz = null
+                            when (label) {
+                                "سلام" -> say("أهلاً يا $kid! أنا دبدوب. إزيك؟")
+                                "جعان" -> say("يلا ناكل تفاحة! نام نام نام")
+                                "نعسان" -> say("تصبح على خير يا $kid. نام نام")
+                                "قطة" -> say("القطة بتقول مياو مياو")
+                                "غنّي" -> say("دبدوب بيقول لا لا لا. $kid بيقول لا لا لا")
+                                else -> {
+                                    val item = BUDDY_QUIZ.random()
+                                    quiz = item
+                                    reply = "ده إيه؟"
+                                    vm.speech.speak("ده إيه؟", pitch = 1.4f)
+                                    scope.launch { delay(1800); vm.speech.speak(item.second, pitch = 1.3f) }
+                                }
+                            }
+                        }
+                    }
+                }
             }
+            Spacer(Modifier.height(8.dp))
+            BigCard(
+                if (listening) "👂" else "🎤", if (listening) "اتكلم!" else "كلّمني",
+                if (listening) Pink else Mint,
+                Modifier.fillMaxWidth(0.8f).height(120.dp), 40.sp
+            ) { listenNow(quiz?.second) }
+            Spacer(Modifier.height(16.dp))
         }
+        Celebrate(win) { win = 0 }
     }
 }
 

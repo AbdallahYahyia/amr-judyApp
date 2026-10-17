@@ -24,6 +24,9 @@ class SpeechHelper(private val context: Context) {
     private var ttsReady = false
     private var recognizer: SpeechRecognizer? = null
 
+    /** If set and it returns true for a text, the text was played from a parent recording and TTS is skipped. */
+    var recordedPlayer: ((String) -> Boolean)? = null
+
     /** Name of the voice the parent picked (saved by the ViewModel). */
     var preferredVoice: String? = null
         set(value) { field = value; if (ttsReady) applyVoice() }
@@ -77,6 +80,15 @@ class SpeechHelper(private val context: Context) {
         }
     }
 
+    /** Opens the system screen that downloads voice data for the default speech engine. */
+    fun openInstallVoiceData() {
+        try {
+            val i = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(i)
+        } catch (e: Exception) { openTtsSettings() }
+    }
+
     fun isOnline(): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
@@ -98,6 +110,7 @@ class SpeechHelper(private val context: Context) {
     }
 
     fun speak(text: String, pitch: Float = 1.1f, rate: Float = 0.8f) {
+        if (recordedPlayer?.invoke(text) == true) return
         val t = tts ?: return
         if (englishMode) {
             var r = t.setLanguage(Locale("ar", "EG"))

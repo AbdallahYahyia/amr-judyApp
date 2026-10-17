@@ -23,9 +23,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.io.File
 
+// Texts the app speaks. Whatever you record under the exact same text replaces the robot voice everywhere.
 private val VOICE_KEYS = listOf(
     "باب", "ماما", "بابا", "قطة", "عربية", "مية", "تفاحة",
-    "عطشان", "جائع", "زعلان", "مبسوط", "عاوز أنام", "الحمام"
+    "عطشان", "جائع", "زعلان", "مبسوط", "عاوز أنام", "الحمام",
+    "ممتاز! برافو!", "حلو أوي! برافو", "شاطر! كمان مرة", "جرّب تاني يا بطل",
+    "برافو! إجابة صح", "حاول تاني", "برافو يا عمرو!", "ده إيه؟", "بيعمل إيه؟", "نام نام! شكراً!", "بوم!",
+    "عايز مية", "عايز عيش", "ماما تعالي", "افتح الباب", "عربية تجري", "عايز أنام", "لبن حلو",
+    "باي باي", "لو سمحت", "شكراً", "العب كورة", "عايز تفاحة",
+    "كورة", "كوباية", "موزة", "بيت", "شمس", "قمر", "نجمة", "جزمة", "عيش", "كلب", "فرخة", "سمكة", "كرسي", "تليفون"
 )
 
 @Composable
@@ -101,14 +107,34 @@ private fun ParentContent(vm: AppViewModel) {
                 }) { Text(label, fontSize = 13.sp) }
             }
         }
-        Button(onClick = { vm.speech.openTtsSettings() }) { Text("تحميل / تغيير صوت من إعدادات الموبايل") }
+        Button(onClick = { vm.speech.openInstallVoiceData() }) { Text("تحميل بيانات صوت (مصر) من النظام") }
+        Button(onClick = { vm.speech.openTtsSettings() }) { Text("إعدادات الكلام في الموبايل") }
+        Text(
+            "ملحوظة: صوت الموبايل العربي ساعات بيبقى فصحى مش مصري. أحسن طريقة للصوت المصري: سجّل صوتك أنت أو ماما للكلمات تحت، والتطبيق هيشغّل تسجيلك بدل الصوت الآلي.",
+            fontSize = 15.sp, color = Ink
+        )
 
-        Text("🎙️ سجّل صوتك للكلمات (٣ ثواني لكل كلمة)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
+        Text("🎙️ سجّل صوتك (٣ ثواني لكل كلمة)", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
+        var newWord by remember { mutableStateOf("") }
+        OutlinedTextField(
+            value = newWord, onValueChange = { newWord = it.take(40) },
+            label = { Text("اكتب أي كلمة أو جملة عايز تسجّلها") }, singleLine = true
+        )
+        Button(enabled = newWord.isNotBlank() && recording == null, onClick = {
+            val k = newWord.trim()
+            recording = k
+            Thread {
+                try { echo.record(3); vm.saveCustomVoice(k, echo) } catch (e: Exception) { }
+                recording = null; refresh++
+            }.start()
+            newWord = ""
+        }) { Text("سجّل الجملة دي") }
         key(refresh) {
-            for (k in VOICE_KEYS) {
+            for (k in (VOICE_KEYS + vm.recordedKeys()).distinct()) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("$k  ${if (vm.hasCustomVoice(k)) "✅" else ""}", fontSize = 20.sp, color = Ink)
+                    Text("$k  ${if (vm.hasCustomVoice(k)) "✅" else ""}", fontSize = 18.sp, color = Ink,
+                        modifier = Modifier.weight(1f))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(enabled = recording == null, onClick = {
                             recording = k

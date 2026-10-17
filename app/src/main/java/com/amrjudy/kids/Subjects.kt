@@ -3,6 +3,8 @@ package com.amrjudy.kids
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -28,14 +30,19 @@ fun Hub(vm: AppViewModel, title: String, cards: List<HubCard>) {
     Column(Modifier.fillMaxSize().background(Cream)) {
         TopBar(title, vm.stars) { if (sel < 0) vm.back() else { vm.speech.stopSpeaking(); sel = -1 } }
         if (sel < 0) {
+            val scroll = cards.size > 8
             Column(
-                Modifier.fillMaxSize().padding(12.dp),
+                Modifier.fillMaxSize()
+                    .then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                    .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 for (row in cards.chunked(2)) {
-                    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val rowMod = if (scroll) Modifier.fillMaxWidth().height(130.dp)
+                    else Modifier.fillMaxWidth().weight(1f)
+                    Row(rowMod, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         for (c in row) {
-                            BigCard(c.emoji, c.label, c.color, Modifier.weight(1f).fillMaxHeight(), 52.sp) {
+                            BigCard(c.emoji, c.label, c.color, Modifier.weight(1f).fillMaxHeight(), 48.sp) {
                                 sel = cards.indexOf(c)
                             }
                         }

@@ -24,7 +24,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val speech = SpeechHelper(app)
     private val voicePlayer = VoiceEcho()
 
-    init { speech.preferredVoice = prefs.getString("voice", null) }
+    init {
+        speech.preferredVoice = prefs.getString("voice", null)
+        // Anything the parent recorded is played instead of the robot voice, for every spoken text.
+        speech.recordedPlayer = { text -> playRecorded(text) }
+    }
+
+    private fun playRecorded(text: String): Boolean {
+        val f = File(getApplication<Application>().filesDir, "voice_${text.hashCode()}.pcm")
+        if (!f.exists()) return false
+        if (!voicePlayer.busy) {
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try { if (voicePlayer.loadFrom(f)) voicePlayer.play(1.0f) } catch (e: Exception) { }
+            }
+        }
+        return true
+    }
+
+    fun recordedKeys(): List<String> = prefs.getStringSet("voice_keys", emptySet())?.toList()?.sorted() ?: emptyList()
 
     fun chooseVoice(name: String) {
         prefs.edit().putString("voice", name).apply()
@@ -99,7 +116,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---- Custom (parent-recorded) voices ----
     private fun voiceFile(key: String) = File(getApplication<Application>().filesDir, "voice_${key.hashCode()}.pcm")
     fun hasCustomVoice(key: String) = voiceFile(key).exists()
-    fun saveCustomVoice(key: String, echo: VoiceEcho) = echo.saveTo(voiceFile(key))
+    fun saveCustomVoice(key: String, echo: VoiceEcho) {
+        echo.saveTo(voiceFile(key))
+        val set = (prefs.getStringSet("voice_keys", emptySet()) ?: emptySet()).toMutableSet()
+        set.add(key)
+        prefs.edit().putStringSet("voice_keys", set).apply()
+    }
 
     /** Plays the parent's recording for [key] if there is one; otherwise falls back to TTS. */
     fun sayWord(key: String, fallback: String = key) {

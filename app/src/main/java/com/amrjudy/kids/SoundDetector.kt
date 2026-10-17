@@ -62,6 +62,44 @@ class SoundDetector {
     }
 }
 
+/** Streams 100 ms voiced/not-voiced windows (used by the "blow the balloon" game). Blocking. Returns false if the mic is unavailable. */
+@SuppressLint("MissingPermission")
+fun streamVoice(maxSeconds: Int, stop: () -> Boolean, onWindow: (Boolean) -> Unit): Boolean {
+    val rate = 16000
+    val minBuf = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+    val rec = AudioRecord(
+        MediaRecorder.AudioSource.MIC, rate,
+        AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, 4096)
+    )
+    if (rec.state != AudioRecord.STATE_INITIALIZED) { rec.release(); return false }
+    val win = rate / 10
+    val buf = ShortArray(win)
+    fun level(): Double {
+        var read = 0
+        while (read < win) {
+            val n = rec.read(buf, read, win - read)
+            if (n <= 0) break
+            read += n
+        }
+        var sum = 0.0
+        for (i in 0 until read) sum += buf[i].toDouble() * buf[i].toDouble()
+        return if (read > 0) sqrt(sum / read) / 32768.0 else 0.0
+    }
+    rec.startRecording()
+    try {
+        var floor = 0.0
+        for (i in 0 until 5) floor += level() / 5          // 0.5 s of background noise
+        val threshold = maxOf(floor * 3.0, 0.03)
+        for (w in 0 until maxSeconds * 10) {
+            if (stop()) break
+            onWindow(level() > threshold)
+        }
+    } finally {
+        rec.stop(); rec.release()
+    }
+    return true
+}
+
 /** Mic button for sound games: gives 0..3 stars by how long the child vocalised, or -1 if the mic failed. */
 @Composable
 fun SoundMicButton(vm: AppViewModel, modifier: Modifier = Modifier, onScore: (Int) -> Unit) {
