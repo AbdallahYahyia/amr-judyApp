@@ -1,0 +1,110 @@
+package com.amrjudy.kids
+
+import android.app.Application
+import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.io.File
+
+enum class Profile(val nameAr: String, val age: Int, val emoji: String) {
+    AMR("عمرو", 3, "👦"),
+    JUDY("جودي", 6, "👧")
+}
+
+class AppViewModel(app: Application) : AndroidViewModel(app) {
+    private val prefs = app.getSharedPreferences("amrjudy", Context.MODE_PRIVATE)
+
+    val speech = SpeechHelper(app)
+    private val voicePlayer = VoiceEcho()
+
+    var profile by mutableStateOf<Profile?>(null)
+        private set
+    var screen by mutableStateOf("home")
+        private set
+    var stars by mutableIntStateOf(prefs.getInt("stars", 0))
+        private set
+    var paused by mutableStateOf(false)
+        private set
+    var photoUri by mutableStateOf(prefs.getString("photo", null))
+        private set
+    var online by mutableStateOf(false)
+        private set
+
+    val stickerPool = listOf("🦄", "🐶", "🐱", "🐰", "🦁", "🐼", "🐸", "🐠", "🦋", "🚀", "🌈", "🍓", "⚽", "🎈", "🐘", "🐥")
+    val unlockedStickers: Int get() = (stars / 5).coerceAtMost(stickerPool.size)
+
+    private var timerJob: Job? = null
+    val pauseAfterMs = 8 * 60 * 1000L
+
+    fun refreshOnline() { online = speech.isOnline() }
+
+    fun selectProfile(p: Profile) {
+        profile = p
+        screen = "menu"
+        refreshOnline()
+        startTimer()
+    }
+
+    fun go(s: String) { screen = s; refreshOnline() }
+
+    fun back() {
+        speech.stopSpeaking(); speech.cancelListening()
+        screen = when (screen) {
+            "menu" -> { profile = null; timerJob?.cancel(); "home" }
+            "home" -> "home"
+            else -> if (profile == null) "home" else "menu"
+        }
+    }
+
+    fun addStars(n: Int) {
+        stars += n
+        prefs.edit().putInt("stars", stars).apply()
+    }
+
+    private fun startTimer() {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            delay(pauseAfterMs)
+            paused = true
+            speech.stopSpeaking(); speech.cancelListening()
+            speech.speak("خلاص يا حبيبي، نرتاح شوية")
+        }
+    }
+
+    fun resume() { paused = false; startTimer() }
+
+    // ---- Parent settings ----
+    fun checkPin(pin: String) = pin == (prefs.getString("pin", "1234") ?: "1234")
+    fun setPin(pin: String) { prefs.edit().putString("pin", pin).apply() }
+    fun setPhoto(uri: String?) {
+        photoUri = uri
+        prefs.edit().putString("photo", uri).apply()
+    }
+
+    // ---- Custom (parent-recorded) voices ----
+    private fun voiceFile(key: String) = File(getApplication<Application>().filesDir, "voice_${key.hashCode()}.pcm")
+    fun hasCustomVoice(key: String) = voiceFile(key).exists()
+    fun saveCustomVoice(key: String, echo: VoiceEcho) = echo.saveTo(voiceFile(key))
+
+    /** Plays the parent's recording for [key] if there is one; otherwise falls back to TTS. */
+    fun sayWord(key: String, fallback: String = key) {
+        val f = voiceFile(key)
+        if (f.exists()) {
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                if (voicePlayer.loadFrom(f)) voicePlayer.play(1.0f) else speech.speak(fallback)
+            }
+        } else speech.speak(fallback)
+    }
+
+    override fun onCleared() {
+        speech.shutdown()
+        super.onCleared()
+    }
+}
