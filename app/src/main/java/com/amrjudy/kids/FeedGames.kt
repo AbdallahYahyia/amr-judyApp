@@ -238,18 +238,18 @@ fun FeedMonster(vm: AppViewModel) {
 
 /* ---------------- 3) Who needs what? ---------------- */
 
-private class Need(val emoji: String, val feel: String, val item: Pair<String, String>)
+private class HelpNeed(val emoji: String, val feel: String, val item: Pair<String, String>)
 
-private val NEEDS = listOf(
-    Need("😋", "جعان", "🍞" to "عيش"),
-    Need("🥵", "حران", "🧊" to "ثلج"),
-    Need("🥶", "بردان", "🧥" to "جاكت"),
-    Need("😴", "نعسان", "🛏️" to "سرير"),
-    Need("🤤", "عطشان", "💧" to "مية"),
-    Need("🙌", "وسخان", "🧼" to "صابون"),
-    Need("😨", "خايف", "🧸" to "دبدوب"),
-    Need("🤩", "عايز ألعب", "⚽" to "كورة"),
-    Need("🤓", "عايز أقرا", "📚" to "كتاب")
+private val HELP_NEEDS = listOf(
+    HelpNeed("😋", "جعان", "🍞" to "عيش"),
+    HelpNeed("🥵", "حران", "🧊" to "ثلج"),
+    HelpNeed("🥶", "بردان", "🧥" to "جاكت"),
+    HelpNeed("😴", "نعسان", "🛏️" to "سرير"),
+    HelpNeed("🤤", "عطشان", "💧" to "مية"),
+    HelpNeed("🙌", "وسخان", "🧼" to "صابون"),
+    HelpNeed("😨", "خايف", "🧸" to "دبدوب"),
+    HelpNeed("🤩", "عايز ألعب", "⚽" to "كورة"),
+    HelpNeed("🤓", "عايز أقرا", "📚" to "كتاب")
 )
 
 @Composable
@@ -262,9 +262,9 @@ fun HelpWho(vm: AppViewModel) {
     var win by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
     val level = levelOf(correct)
-    val needs = remember(round, level) { NEEDS.shuffled().take(if (level >= 3) 2 else 1) }
+    val needs = remember(round, level) { HELP_NEEDS.shuffled().take(if (level >= 3) 2 else 1) }
     val options = remember(round, level) {
-        val others = NEEDS.filter { n -> needs.none { it === n } }.shuffled().map { it.item }
+        val others = HELP_NEEDS.filter { n -> needs.none { it === n } }.shuffled().map { it.item }
         (needs.map { it.item } + others.take((if (level == 1) 3 else if (level == 2) 4 else 5) - needs.size)).shuffled()
     }
     val sentence = "أنا " + needs.joinToString(" و") { it.feel }

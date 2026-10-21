@@ -92,6 +92,8 @@ fun AppRoot(vm: AppViewModel) {
             "comm" -> CommHub(vm)
             "arabic" -> ArabicHub(vm)
             "letters" -> AmrLettersHub(vm)
+            "zoo" -> ZooHub(vm)
+            "blaster" -> BubbleBlaster(vm)
             "videos" -> VideosScreen(vm)
             else -> HomeScreen(vm)
         }
@@ -134,6 +136,8 @@ fun MenuScreen(vm: AppViewModel) {
             add(MenuItem("🗣️", "ألعاب الكلام", Pink, "talk"))
             add(MenuItem("🤝", "تواصل ومشاعر", Sky, "comm"))
             add(MenuItem("🔠", "الحروف", Lilac, "letters"))
+            add(MenuItem("🎯", "مدفع البالونات", Sky, "blaster"))
+            add(MenuItem("🦁", "حيوانات وأماكن", Peach, "zoo"))
             add(MenuItem("🔊", "نطق الكلمات", Sun, "speech"))
             add(MenuItem("🐰", "أطعم وساعد", Mint, "feed"))
             add(MenuItem("🎈", "بالونات", Sky, "balloons"))
