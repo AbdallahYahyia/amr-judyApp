@@ -131,7 +131,7 @@ private fun enPick(w: EnW, n: Int, confusable: Boolean): List<EnW> {
 }
 
 private fun buildQ(cfg: RaceCfg, amr: Boolean, prev: String?): RaceQ {
-    val n = if (cfg.level == 1) 2 else 3
+    val n = gatesFor(cfg.level, amr)
     val level = cfg.level
     val arPool = AR.filter { it.ch in cfg.letters }.ifEmpty { AR }
     val enPool = EN.filter { it.letter in cfg.letters }.ifEmpty { EN }
@@ -155,7 +155,7 @@ private fun buildQ(cfg: RaceCfg, amr: Boolean, prev: String?): RaceQ {
                 } else if (level == 2) {
                     opts = (0..2).map { l.ch + AR_MARKS[it] }.shuffled()
                 } else {
-                    val others = arPick(l, 3, true).filter { it !== l }.take(2)
+                    val others = arPick(l, n, true).filter { it !== l }.take(n - 1)
                     opts = (listOf(ans) + others.map { it.ch + AR_MARKS[(0..2).random()] }).distinct().shuffled()
                 }
                 val t = "فين $syl؟"
@@ -199,7 +199,8 @@ private fun buildQ(cfg: RaceCfg, amr: Boolean, prev: String?): RaceQ {
     }
 }
 
-private fun keyOf(q: RaceQ) = q.options[q.answer]
+/** Judy gets 4 gates on the hardest level; Amr stays at 3. */
+private fun gatesFor(level: Int, amr: Boolean) = if (level == 1) 2 else if (level == 2 || amr) 3 else 4
 
 /* ---------- entry (language / content / level chosen here) ---------- */
 
@@ -264,7 +265,7 @@ fun LetterRace(vm: AppViewModel) {
                     when (level) {
                         1 -> if (lang == 0) "بوابتين وبطيء، ومعاه صورة تساعد" else "2 gates, slow, with a picture to help"
                         2 -> if (lang == 0) "تلات بوابات وأسرع" else "3 gates, faster"
-                        else -> if (lang == 0) "تلات بوابات، سريع، وبالسمع بس (من غير كلام مكتوب)" else "3 gates, fast, listen only"
+                        else -> if (amr) (if (lang == 0) "تلات بوابات، سريع، وبالسمع بس (من غير كلام مكتوب)" else "3 gates, fast, listen only") else (if (lang == 0) "٤ بوابات، سريع جداً، وبالسمع بس" else "4 gates, very fast, listen only")
                     },
                     fontSize = 15.sp, color = Ink, textAlign = TextAlign.Center
                 )
@@ -396,8 +397,8 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
     DisposableEffect(Unit) { onDispose { try { tone?.release() } catch (e: Exception) { } } }
     fun beep(t: Int, ms: Int) { try { tone?.startTone(t, ms) } catch (e: Exception) { } }
 
-    val zSpeed = (if (amr) listOf(0.65f, 0.9f, 1.2f) else listOf(0.95f, 1.35f, 1.8f))[cfg.level - 1]
-    val n = if (cfg.level == 1) 2 else 3
+    val zSpeed = (if (amr) listOf(0.65f, 0.9f, 1.2f) else listOf(0.95f, 1.35f, 2.0f))[cfg.level - 1]
+    val n = gatesFor(cfg.level, amr)
 
     fun say(x: RaceQ) { if (x.english) vm.speech.speakEn(x.spoken) else vm.speech.speak(x.spoken, pitch = 1.2f) }
 
