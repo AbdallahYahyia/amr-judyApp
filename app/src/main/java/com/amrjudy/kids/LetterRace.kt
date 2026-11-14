@@ -498,7 +498,7 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
         ) {
             val frame = tick.intValue
             Canvas(Modifier.fillMaxSize()) {
-                if (frame >= 0) drawWorld(st, size.width, size.height, n, THEMES[cfg.scene], CAR_COLORS[cfg.carColor], cfg.carStyle)
+                if (frame >= 0) drawWorld(st, this.size.width, this.size.height, n, THEMES[cfg.scene], CAR_COLORS[cfg.carColor], cfg.carStyle)
             }
             val cur = q
             val W = size.width.toFloat(); val H = size.height.toFloat()
