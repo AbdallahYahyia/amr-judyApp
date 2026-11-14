@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.shadow
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +50,7 @@ import kotlin.math.roundToInt
 
 private class RaceCfg(
     val lang: Int, val content: Int, val level: Int,           // lang 0 = Arabic, 1 = English
-    val carColor: Int, val carStyle: Int, val scene: Int, val letters: Set<String>
+    val carColor: Int, val carStyle: Int, val scene: Int, val letters: Set<String>, val speed: Float
 )
 
 private val CAR_COLORS = listOf(
@@ -75,6 +77,7 @@ private object RaceSaved {
     var carColor = 0
     var carStyle = 0
     var scene = 0
+    var speed: Float? = null
     var arLetters: Set<String>? = null
     var enLetters: Set<String>? = null
 }
@@ -93,6 +96,8 @@ private class RaceState {
     var phase = 0          // 0 = gates approaching, 1 = gates passing, 2 = short wait before the next question
     var retries = 1
     var repeat = false
+    var burst = 0f         // sparkle ring after a correct gate
+    var shake = 0f         // car wobble after a wrong gate
 }
 
 /* ---------- data ---------- */
@@ -223,6 +228,7 @@ fun LetterRace(vm: AppViewModel) {
     var lang by remember { mutableStateOf(0) }
     var content by remember { mutableStateOf(if (amr) 0 else 2) }
     var level by remember { mutableStateOf(if (amr) 1 else 2) }
+    var speed by remember { mutableStateOf(RaceSaved.speed ?: (if (amr) 0.9f else 0.65f)) }
     var carColor by remember { mutableStateOf(RaceSaved.carColor) }
     var carStyle by remember { mutableStateOf(RaceSaved.carStyle) }
     var scene by remember { mutableStateOf(RaceSaved.scene) }
@@ -269,6 +275,18 @@ fun LetterRace(vm: AppViewModel) {
                     },
                     fontSize = 15.sp, color = Ink, textAlign = TextAlign.Center
                 )
+                Text(
+                    (if (lang == 0) "السرعة  Speed:  ×" else "Speed:  ×") + (speed * 10).roundToInt() / 10f,
+                    fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink
+                )
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("🐢", fontSize = 30.sp)
+                    Slider(
+                        value = speed, onValueChange = { speed = (it * 10).roundToInt() / 10f },
+                        valueRange = 0.3f..1.6f, modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+                    )
+                    Text("🚀", fontSize = 30.sp)
+                }
                 if (amr && content == 2) {
                     Text(
                         if (lang == 0) "(في الكلمات بيشوف صور على البوابات)" else "(Words show pictures on the gates)",
@@ -365,10 +383,10 @@ fun LetterRace(vm: AppViewModel) {
                 BigCard("➡️", if (lang == 0) "التالي" else "Next", Sky, Modifier.weight(1f).height(70.dp), 28.sp) { step++ }
             } else {
                 BigCard("🏁", if (lang == 0) "يلا نسابق!" else "Let's race!", Mint, Modifier.weight(1f).height(70.dp), 32.sp) {
-                    RaceSaved.carColor = carColor; RaceSaved.carStyle = carStyle; RaceSaved.scene = scene
+                    RaceSaved.carColor = carColor; RaceSaved.carStyle = carStyle; RaceSaved.scene = scene; RaceSaved.speed = speed
                     RaceSaved.arLetters = arSel; RaceSaved.enLetters = enSel
                     val letters = (if (lang == 0) arSel else enSel).let { if (it.isEmpty()) (if (lang == 0) allAr else allEn).toSet() else it }
-                    cfg = RaceCfg(lang, content, level, carColor, carStyle, scene, letters)
+                    cfg = RaceCfg(lang, content, level, carColor, carStyle, scene, letters, speed)
                 }
             }
         }
@@ -397,7 +415,7 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
     DisposableEffect(Unit) { onDispose { try { tone?.release() } catch (e: Exception) { } } }
     fun beep(t: Int, ms: Int) { try { tone?.startTone(t, ms) } catch (e: Exception) { } }
 
-    val zSpeed = (if (amr) listOf(0.65f, 0.9f, 1.2f) else listOf(0.95f, 1.35f, 2.0f))[cfg.level - 1]
+    val zSpeed = (if (amr) listOf(0.65f, 0.9f, 1.2f) else listOf(0.95f, 1.3f, 1.7f))[cfg.level - 1] * cfg.speed
     val n = gatesFor(cfg.level, amr)
 
     fun say(x: RaceQ) { if (x.english) vm.speech.speakEn(x.spoken) else vm.speech.speak(x.spoken, pitch = 1.2f) }
@@ -427,7 +445,7 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
         if (best == cur.answer) {
             score++; streak++
             vm.addStars(cfg.level)
-            flash = "⭐"
+            flash = "⭐"; st.burst = 1f
             beep(ToneGenerator.TONE_PROP_ACK, 150)
             if (cfg.lang == 0) vm.speech.speak("برافو!", pitch = 1.4f) else vm.speech.speakEn("Great job!")
             st.retries = 1; st.repeat = false
@@ -435,7 +453,7 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
             st.pause = 1.0f
         } else {
             streak = 0
-            flash = "😕"
+            flash = "😕"; st.shake = 1f
             beep(ToneGenerator.TONE_PROP_NACK, 200)
             if (cfg.lang == 0) vm.speech.speak("لأ، جرّب تاني", pitch = 1.3f) else vm.speech.speakEn("Try again")
             // ask the same question once more, then move on
@@ -453,6 +471,7 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
     fun step(dt: Float) {
         st.roadPhase += dt * (if (q == null || st.phase == 2) 1.6f else 1.6f + 1.2f * zSpeed)
         st.carU += (st.targetU - st.carU) * minOf(1f, 10f * dt)
+        st.burst = maxOf(0f, st.burst - dt * 1.1f); st.shake = maxOf(0f, st.shake - dt * 1.8f)
         if (q == null) {
             st.pause -= dt
             if (st.pause <= 0f) nextQuestion(false)
@@ -522,22 +541,40 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
                             .size((gateW / density).dp, (gateH / density).dp)
                             .graphicsLayer { scaleX = s; scaleY = s; transformOrigin = TransformOrigin(0.5f, 1f) }
                     ) {
-                        // posts
-                        Box(Modifier.align(Alignment.BottomStart).padding(start = 6.dp).size(8.dp, (gateH / density * 0.55f).dp).background(col))
-                        Box(Modifier.align(Alignment.BottomEnd).padding(end = 6.dp).size(8.dp, (gateH / density * 0.55f).dp).background(col))
-                        // board
+                        val postH = (gateH / density * 0.58f).dp
+                        // ground shadow
                         Box(
+                            Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.94f).height(9.dp)
+                                .clip(RoundedCornerShape(50)).background(Color(0x33000000))
+                        )
+                        // posts
+                        Box(
+                            Modifier.align(Alignment.BottomStart).padding(start = 8.dp).size(10.dp, postH)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Brush.horizontalGradient(listOf(lightenC(col, 0.3f), darken(col, 0.2f))))
+                        )
+                        Box(
+                            Modifier.align(Alignment.BottomEnd).padding(end = 8.dp).size(10.dp, postH)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Brush.horizontalGradient(listOf(lightenC(col, 0.3f), darken(col, 0.2f))))
+                        )
+                        // board
+                        val shape = RoundedCornerShape(18.dp)
+                        Column(
                             Modifier.align(Alignment.TopCenter).fillMaxWidth().fillMaxHeight(0.62f)
-                                .clip(RoundedCornerShape(16.dp)).background(Color.White)
-                                .border(5.dp, col, RoundedCornerShape(16.dp)),
-                            contentAlignment = Alignment.Center
+                                .shadow(8.dp, shape).clip(shape)
+                                .background(Brush.verticalGradient(listOf(Color.White, lightenC(col, 0.88f))))
+                                .border(4.dp, col, shape)
                         ) {
-                            val base = gateW / density
-                            val fs = if (cur.big) base * (if (label.length <= 2) 0.40f else 0.30f) else base * 0.24f
-                            Text(
-                                label, fontSize = fs.sp, fontWeight = FontWeight.ExtraBold, color = Ink,
-                                textAlign = TextAlign.Center, maxLines = 1, softWrap = false
-                            )
+                            Box(Modifier.fillMaxWidth().height(14.dp).background(col))
+                            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                                val base = gateW / density
+                                val fs = if (cur.big) base * (if (label.length <= 2) 0.40f else 0.30f) else base * 0.24f
+                                Text(
+                                    label, fontSize = fs.sp, fontWeight = FontWeight.ExtraBold, color = Ink,
+                                    textAlign = TextAlign.Center, maxLines = 1, softWrap = false
+                                )
+                            }
                         }
                     }
                 }
@@ -545,13 +582,16 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
 
             // question banner
             if (cur != null) {
+                val bshape = RoundedCornerShape(28.dp)
                 Row(
-                    Modifier.align(Alignment.TopCenter).padding(10.dp).clip(RoundedCornerShape(22.dp))
-                        .background(Color.White.copy(alpha = 0.92f)).clickable { say(cur) }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    Modifier.align(Alignment.TopCenter).padding(10.dp).shadow(8.dp, bshape).clip(bshape)
+                        .background(Color.White).border(3.dp, Color(0xFFFFB84D), bshape).clickable { say(cur) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("🔊", fontSize = 30.sp)
+                    Box(Modifier.size(46.dp).clip(RoundedCornerShape(50)).background(Sky), contentAlignment = Alignment.Center) {
+                        Text("🔊", fontSize = 26.sp)
+                    }
                     if (cur.hint.isNotEmpty()) Text(cur.hint, fontSize = 40.sp)
                     if (cfg.level < 3) {
                         Text(
@@ -561,11 +601,13 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
                     }
                 }
             }
+            val cshape = RoundedCornerShape(16.dp)
             Text(
                 "⭐ $score", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Ink,
-                modifier = Modifier.align(Alignment.TopStart).padding(10.dp).clip(RoundedCornerShape(14.dp))
-                    .background(Color.White.copy(alpha = 0.85f)).padding(horizontal = 10.dp, vertical = 4.dp)
+                modifier = Modifier.align(Alignment.TopStart).padding(10.dp).shadow(6.dp, cshape).clip(cshape)
+                    .background(Color.White).padding(horizontal = 12.dp, vertical = 6.dp)
             )
+            if (flash == "😕") Box(Modifier.fillMaxSize().background(Color(0x22FF3B30)))
             if (flash.isNotEmpty()) {
                 Text(flash, fontSize = 110.sp, modifier = Modifier.align(Alignment.Center))
             }
@@ -585,6 +627,10 @@ private fun keyOfLetter(cfg: RaceCfg, q: RaceQ): String? {
 }
 
 /* ---------- drawing: pseudo-3D road, hills, car ---------- */
+
+private fun lightenC(c: Color, f: Float = 0.45f) = Color(
+    c.red + (1f - c.red) * f, c.green + (1f - c.green) * f, c.blue + (1f - c.blue) * f, 1f
+)
 
 private fun darken(c: Color, f: Float = 0.25f) = Color(c.red * (1f - f), c.green * (1f - f), c.blue * (1f - f), 1f)
 
@@ -697,8 +743,9 @@ private fun DrawScope.drawWorld(
     val dCar = 0.93f
     val carW = (W / lanes) * 0.62f
     val carX = cx + st.carU * roadHalf(W, dCar)
-    val carY = H * 0.93f
-    val tilt = ((st.targetU - st.carU) * 14f).coerceIn(-12f, 12f)
+    val carY = H * 0.93f + bounce
+    val bounce = kotlin.math.sin((st.roadPhase * 40f).toDouble()).toFloat() * carW * 0.012f
+    val tilt = ((st.targetU - st.carU) * 14f).coerceIn(-12f, 12f) + kotlin.math.sin((st.shake * 30f).toDouble()).toFloat() * 9f * st.shake
     val golden = carStyle == 4
     val body = if (golden) Color(0xFFFFC107) else carColor
     val dark = darken(body, 0.28f)
@@ -725,6 +772,18 @@ private fun DrawScope.drawWorld(
         drawRoundRect(Color(0xFFFFD43B), Offset(carX - carW * 0.44f, carY - carW * 0.44f), Size(carW * 0.16f, carW * 0.08f), CornerRadius(6f))
         drawRoundRect(Color(0xFFFFD43B), Offset(carX + carW * 0.28f, carY - carW * 0.44f), Size(carW * 0.16f, carW * 0.08f), CornerRadius(6f))
         drawRoundRect(darken(body, 0.5f), Offset(carX - carW * 0.40f, carY - carW * 0.20f), Size(carW * 0.80f, carW * 0.08f), CornerRadius(6f))
+        drawRoundRect(Color(0x55FFFFFF), Offset(carX - carW * 0.44f, carY - carW * 0.50f), Size(carW * 0.88f, carW * 0.09f), CornerRadius(carW * 0.05f))
+        drawRoundRect(Color.White, Offset(carX - carW * 0.12f, carY - carW * 0.19f), Size(carW * 0.24f, carW * 0.07f), CornerRadius(4f))
+        drawRoundRect(Color(0xFFE03131), Offset(carX - carW * 0.47f, carY - carW * 0.30f), Size(carW * 0.10f, carW * 0.06f), CornerRadius(4f))
+        drawRoundRect(Color(0xFFE03131), Offset(carX + carW * 0.37f, carY - carW * 0.30f), Size(carW * 0.10f, carW * 0.06f), CornerRadius(4f))
+    }
+    if (st.burst > 0f) {
+        val r = carW * (0.5f + 1.3f * (1f - st.burst))
+        for (i in 0 until 10) {
+            val ang = i * 0.628f
+            drawCircle(Color(0xFFFFD43B).copy(alpha = st.burst), 7f * st.burst + 2f,
+                Offset(carX + kotlin.math.cos(ang.toDouble()).toFloat() * r, carY - carW * 0.5f + kotlin.math.sin(ang.toDouble()).toFloat() * r))
+        }
     }
     // sparkles
     if (carStyle == 2 || golden) {
