@@ -44,6 +44,11 @@ private fun letterChoices(answer: AL): List<String> =
 
 fun arabicLetterNames(): List<String> = ALPHA.map { it.name }
 
+/** Public view of the Arabic alphabet data (used by the letter-race game). */
+class LetterInfo(val ch: String, val name: String, val word: String, val tashkeel: String, val emoji: String)
+
+fun arabicLetters(): List<LetterInfo> = ALPHA.map { LetterInfo(it.ch, it.name, it.word, TASHKEEL[it.word] ?: it.word, it.emoji) }
+
 /** Words with full diacritics (tashkeel) for first-grade reading. */
 private val TASHKEEL = mapOf(
     "أرنب" to "أَرْنَب", "بطة" to "بَطَّة", "تفاحة" to "تُفَّاحَة", "ثعلب" to "ثَعْلَب", "جمل" to "جَمَل",

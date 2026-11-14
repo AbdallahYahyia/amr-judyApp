@@ -93,6 +93,7 @@ fun AppRoot(vm: AppViewModel) {
             "arabic" -> ArabicHub(vm)
             "letters" -> AmrLettersHub(vm)
             "zoo" -> ZooHub(vm)
+            "race" -> LetterRace(vm)
             "blaster" -> BubbleBlaster(vm)
             "videos" -> VideosScreen(vm)
             else -> HomeScreen(vm)
@@ -135,6 +136,7 @@ fun MenuScreen(vm: AppViewModel) {
         if (amr) {
             add(MenuItem("🗣️", "ألعاب الكلام", Pink, "talk"))
             add(MenuItem("🤝", "تواصل ومشاعر", Sky, "comm"))
+            add(MenuItem("🏎️", "سباق الحروف", Sun, "race"))
             add(MenuItem("🔠", "الحروف", Lilac, "letters"))
             add(MenuItem("🎯", "مدفع البالونات", Sky, "blaster"))
             add(MenuItem("🦁", "حيوانات وأماكن", Peach, "zoo"))
@@ -150,6 +152,7 @@ fun MenuScreen(vm: AppViewModel) {
             add(MenuItem("♞", "أبطال الشطرنج", Lilac, "chess"))
             add(MenuItem("🐻", "دبدوب", Peach, "buddy"))
         } else {
+            add(MenuItem("🏎️", "سباق الحروف", Sun, "race"))
             add(MenuItem("📖", "لغتي", Pink, "arabic"))
             add(MenuItem("🔤", "English", Sky, "english"))
             add(MenuItem("➕", "Math", Mint, "math"))
