@@ -120,6 +120,29 @@ private val EN = listOf(
 )
 private val EN_GROUPS = listOf("bdpq", "mnw", "un", "ijl", "aeo", "gqy", "ft", "cs", "hn", "vy")
 
+private class Pic(val e: String, val ar: String, val en: String)
+
+private val ANIMALS = listOf(
+    Pic("🦁", "الأسد", "lion"), Pic("🐘", "الفيل", "elephant"), Pic("🐱", "القطة", "cat"), Pic("🐶", "الكلب", "dog"),
+    Pic("🐮", "البقرة", "cow"), Pic("🐑", "الخروف", "sheep"), Pic("🐔", "الفرخة", "chicken"), Pic("🐴", "الحصان", "horse"),
+    Pic("🐵", "القرد", "monkey"), Pic("🦒", "الزرافة", "giraffe"), Pic("🐟", "السمكة", "fish"), Pic("🐢", "السلحفاة", "turtle"),
+    Pic("🐰", "الأرنب", "rabbit"), Pic("🐻", "الدب", "bear"), Pic("🦆", "البطة", "duck"), Pic("🐯", "النمر", "tiger")
+)
+private val FRUITS = listOf(
+    Pic("🍎", "التفاحة", "apple"), Pic("🍌", "الموزة", "banana"), Pic("🍊", "البرتقالة", "orange"), Pic("🍇", "العنب", "grapes"),
+    Pic("🍓", "الفراولة", "strawberry"), Pic("🍉", "البطيخة", "watermelon"), Pic("🍐", "الكمثرى", "pear"), Pic("🍑", "الخوخة", "peach"),
+    Pic("🍒", "الكرز", "cherries"), Pic("🍍", "الأناناس", "pineapple"), Pic("🥕", "الجزرة", "carrot"), Pic("🍅", "الطماطم", "tomato"),
+    Pic("🥭", "المانجا", "mango"), Pic("🍋", "الليمونة", "lemon")
+)
+
+private fun picQ(cfg: RaceCfg, n: Int, prev: String?): RaceQ {
+    val pool = if (cfg.content == 3) ANIMALS else FRUITS
+    val w = pool.filter { it.e != prev }.random()
+    val o = (listOf(w) + pool.filter { it !== w }.shuffled().take(n - 1)).shuffled()
+    val t = if (cfg.lang == 0) "فين ${w.ar}؟" else "Find the ${w.en}"
+    return RaceQ(t, t, cfg.lang == 1, "", o.map { it.e }, o.indexOf(w), true)
+}
+
 private fun arPick(l: LetterInfo, n: Int, confusable: Boolean): List<LetterInfo> {
     val pool = if (confusable) AR.filter { it.ch != l.ch && AR_GROUPS.any { g -> g.contains(l.ch) && g.contains(it.ch) } }
     else emptyList()
@@ -138,6 +161,7 @@ private fun enPick(w: EnW, n: Int, confusable: Boolean): List<EnW> {
 private fun buildQ(cfg: RaceCfg, amr: Boolean, prev: String?): RaceQ {
     val n = gatesFor(cfg.level, amr)
     val level = cfg.level
+    if (cfg.content >= 3) return picQ(cfg, n, prev)
     val arPool = AR.filter { it.ch in cfg.letters }.ifEmpty { AR }
     val enPool = EN.filter { it.letter in cfg.letters }.ifEmpty { EN }
     if (cfg.lang == 0) {
@@ -226,7 +250,7 @@ fun LetterRace(vm: AppViewModel) {
     var cfg by remember { mutableStateOf<RaceCfg?>(null) }
     var step by remember { mutableStateOf(0) }
     var lang by remember { mutableStateOf(0) }
-    var content by remember { mutableStateOf(if (amr) 0 else 2) }
+    var content by remember { mutableStateOf(if (amr) 3 else 2) }
     var level by remember { mutableStateOf(if (amr) 1 else 2) }
     var speed by remember { mutableStateOf(RaceSaved.speed ?: (if (amr) 0.9f else 0.65f)) }
     var carColor by remember { mutableStateOf(RaceSaved.carColor) }
@@ -248,7 +272,7 @@ fun LetterRace(vm: AppViewModel) {
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("الخطوة ${step + 1} من 3", fontSize = 15.sp, color = Ink)
+            Text("الخطوة ${step + 1} من ${if (content >= 3) 2 else 3}", fontSize = 15.sp, color = Ink)
             if (step == 0) {
                 Text("🏎️", fontSize = 56.sp)
                 Text("اللغة  Language", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
@@ -257,9 +281,12 @@ fun LetterRace(vm: AppViewModel) {
                     Chip("English", lang == 1, Modifier.weight(1f)) { lang = 1 }
                 }
                 Text("هنتسابق على إيه؟  What to race?", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
-                val names = if (lang == 0) listOf("حروف", "حركات", "كلمات") else listOf("Letters", "First letter", "Words")
+                val names = if (lang == 0) listOf("حروف", "حركات", "كلمات", "🐾 حيوانات", "🍎 فواكه")
+                    else listOf("Letters", "First letter", "Words", "🐾 Animals", "🍎 Fruits")
+                for (row in listOf(0..2, 3..4)) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (i in row) Chip(names[i], content == i, Modifier.weight(1f)) { content = i }
+                }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    names.forEachIndexed { i, n -> Chip(n, content == i, Modifier.weight(1f)) { content = i } }
                 }
                 Text("المستوى  Level", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -379,7 +406,7 @@ fun LetterRace(vm: AppViewModel) {
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically
         ) {
             if (step > 0) BigCard("⬅️", "", Peach, Modifier.size(70.dp), 28.sp) { step-- }
-            if (step < 2) {
+            if (step < 2 && !(step == 1 && content >= 3)) {
                 BigCard("➡️", if (lang == 0) "التالي" else "Next", Sky, Modifier.weight(1f).height(70.dp), 28.sp) { step++ }
             } else {
                 BigCard("🏁", if (lang == 0) "يلا نسابق!" else "Let's race!", Mint, Modifier.weight(1f).height(70.dp), 32.sp) {
@@ -620,7 +647,8 @@ private fun RaceGame(vm: AppViewModel, cfg: RaceCfg, amr: Boolean, onExit: () ->
 private fun keyOfLetter(cfg: RaceCfg, q: RaceQ): String? {
     // Arabic letters: first char of the answer; English: the letter; words: the answer text.
     val a = q.options[q.answer]
-    return if (cfg.lang == 0 && cfg.content != 2) a.take(1)
+    return if (cfg.content >= 3) a
+    else if (cfg.lang == 0 && cfg.content != 2) a.take(1)
     else if (cfg.lang == 1 && cfg.content == 0) a.uppercase()
     else if (cfg.lang == 1 && cfg.content == 1) EN.firstOrNull { it.letter == a.uppercase() }?.letter
     else null
@@ -743,8 +771,7 @@ private fun DrawScope.drawWorld(
     val dCar = 0.93f
     val carW = (W / lanes) * 0.62f
     val carX = cx + st.carU * roadHalf(W, dCar)
-    val carY = H * 0.93f + bounce
-    val bounce = kotlin.math.sin((st.roadPhase * 40f).toDouble()).toFloat() * carW * 0.012f
+    val carY = H * 0.93f + kotlin.math.sin((st.roadPhase * 40f).toDouble()).toFloat() * carW * 0.012f
     val tilt = ((st.targetU - st.carU) * 14f).coerceIn(-12f, 12f) + kotlin.math.sin((st.shake * 30f).toDouble()).toFloat() * 9f * st.shake
     val golden = carStyle == 4
     val body = if (golden) Color(0xFFFFC107) else carColor
